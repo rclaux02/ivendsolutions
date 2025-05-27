@@ -1,0 +1,26 @@
+id,store_id,ean,name,trademark,description,price,discount_price,stock,sale_type,image_url
+000000000015,59434,000000000015,BC Blue Razz Ice,Elfbar,BC Blue Razz Ice - Sabor: Menta - Nicotina: 10.00%,69.9,52.425000000000004,35,UNIT,https://example.com/placeholder.jpg
+000000000017,59434,000000000017,BC S. Kiwi Ice,Elfbar,BC S. Kiwi Ice - Sabor: Menta - Nicotina: 10.00%,69.9,,9,UNIT,https://example.com/placeholder.jpg
+000000000016,59434,000000000016,BC Watermelon Ice,Elfbar,BC Watermelon Ice - Sabor: Menta - Nicotina: 10.00%,69.9,,3,UNIT,https://example.com/placeholder.jpg
+000000000025,59434,000000000025,Berry & Kiwi,Elfbar,Berry & Kiwi - Sabor: Menta - Nicotina: 10.00%,75,60,10,UNIT,https://example.com/placeholder.jpg
+000000000020,59434,000000000020,Blueberry Splash,Elfbar,Blueberry Splash - Sabor: Menta - Nicotina: 10.00%,35,29.75,7,UNIT,https://example.com/placeholder.jpg
+000000000010,59434,000000000010,C Blue Razz Ice,Elfbar,C Blue Razz Ice - Sabor: Menta - Nicotina: 10.00%,29.9,20.93,7,UNIT,https://example.com/placeholder.jpg
+000000000013,59434,000000000013,C Grape Ice,Elfbar,C Grape Ice - Sabor: Menta - Nicotina: 10.00%,29.9,25.415,0,UNIT,https://example.com/placeholder.jpg
+000000000011,59434,000000000011,Creamy Mango,Elfbar,Creamy Mango - Sabor: Menta - Nicotina: 10.00%,29.9,,0,UNIT,https://example.com/placeholder.jpg
+000000000014,59434,000000000014,Double Mango,Elfbar,Double Mango - Sabor: Menta - Nicotina: 10.00%,69.9,,0,UNIT,https://example.com/placeholder.jpg
+8,59434,8,Dragonfruit,Elfbar,Dragonfruit - Sabor: Menta - Nicotina: 10.00%,89.9,,5,UNIT,https://example.com/placeholder.jpg
+000000000018,59434,000000000018,Fresh Mint,Elfbar,Fresh Mint - Sabor: Menta - Nicotina: 10.00%,75,56.25,7,UNIT,https://example.com/placeholder.jpg
+000000000006,59434,000000000006,Frosty Mint,Elfbar,Frosty Mint - Sabor: Menta - Nicotina: 10.00%,89.9,,0,UNIT,https://example.com/placeholder.jpg
+000000000022,59434,000000000022,LK Mango Ice,Elfbar,LK Mango Ice - Sabor: Menta - Nicotina: 10.00%,55,46.75,3,UNIT,https://example.com/placeholder.jpg
+000000000023,59434,000000000023,LK S. Kiwi Ice,Elfbar,LK S. Kiwi Ice - Sabor: Menta - Nicotina: 10.00%,55,46.75,10,UNIT,https://example.com/placeholder.jpg
+000000000009,59434,000000000009,Miami Mint,Elfbar,Miami Mint - Sabor: Menta - Nicotina: 10.00%,29.9,,0,UNIT,https://example.com/placeholder.jpg
+000000000003,59434,000000000003,Passion Gaga,Elfbar,Passion Gaga - Sabor: Menta - Nicotina: 10.00%,89.9,,20,UNIT,https://example.com/placeholder.jpg
+000000000007,59434,000000000007,Piña Colada,Elfbar,Piña Colada - Sabor: Menta - Nicotina: 10.00%,89.9,62.93000000000001,3,UNIT,https://example.com/placeholder.jpg
+000000000004,59434,000000000004,Raspberry Lemon,Elfbar,Raspberry Lemon - Sabor: Menta - Nicotina: 10.00%,89.9,,25,UNIT,https://example.com/placeholder.jpg
+000000000024,59434,000000000024,Razz & Peach,Elfbar,Razz & Peach - Sabor: Menta - Nicotina: 10.00%,75,,8,UNIT,https://example.com/placeholder.jpg
+000000000005,59434,000000000005,Sour Apple Ice,Elfbar,Sour Apple Ice - Sabor: Menta - Nicotina: 10.00%,89.9,71.92,3,UNIT,https://example.com/placeholder.jpg
+000000000021,59434,000000000021,Strawberry Mango,Elfbar,Strawberry Mango - Sabor: Menta - Nicotina: 10.00%,35,,10,UNIT,https://example.com/placeholder.jpg
+000000000012,59434,000000000012,Strawnana,Elfbar,Strawnana - Sabor: Menta - Nicotina: 10.00%,29.9,,1,UNIT,https://example.com/placeholder.jpg
+000000000019,59434,000000000019,Watermelon Chill,Elfbar,Watermelon Chill - Sabor: Menta - Nicotina: 10.00%,55,,30,UNIT,https://example.com/placeholder.jpg
+000000000001,59434,000000000001,Watermelon Mint,Elfbar,Watermelon Mint - Sabor: Menta - Nicotina: 10.00%,59.9,53.91,4,UNIT,https://example.com/placeholder.jpg
+000000000002,59434,000000000002,White Grape,Elfbar,White Grape - Sabor: Menta - Nicotina: 10.00%,89.9,44.95,5,UNIT,https://example.com/placeholder.jpg

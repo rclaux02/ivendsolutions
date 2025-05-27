@@ -1,0 +1,137 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'Akira Expanded';
+  src: url('../assets/fonts/Akira-Expanded.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url('../assets/fonts/Inter-VariableFont_opsz\,wght.ttf') format('truetype-variations');
+  font-weight: 100 900;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url('../assets/fonts/Inter-Italic-VariableFont_opsz\,wght.ttf') format('truetype-variations');
+  font-weight: 100 900;
+  font-style: italic;
+}
+
+:root {
+  /* Original dimensions */
+  --vending-width: 1080px;
+  --vending-height: 1920px;
+  --header-height: 440px;
+  
+  /* Scaling factor for development */
+  /* --scale-factor: 0.2; */
+  
+  /* Default font family */
+  font-family: 'Inter', 'Akira Expanded', sans-serif;
+}
+
+/* Font utility class for Akira Expanded */
+.font-akira {
+  font-family: 'Akira Expanded', sans-serif;
+}
+
+/* Font utility class for Clash Display */
+.font-clash {
+  font-family: 'Clash Display', sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #000000;
+  min-height: 100vh;
+  width: 100vw;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  background: #ffffff;
+  overflow: auto; /* Changed from hidden to auto to allow scrolling */
+}
+
+/* Hide scrollbar for all elements */
+* {
+  scrollbar-width: none; /* Firefox */
+}
+
+*::-webkit-scrollbar {
+  display: none; /* Chrome, Electron */
+}
+
+.app-container {
+  width: var(--vending-width);
+  height: var(--vending-height);
+  transform-origin: top center;
+  /* transform: scale(var(--scale-factor)); */
+  background: #000000;
+  position: relative;
+  overflow: hidden;
+}
+
+main {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Fixed height hero section */
+main > section:first-child {
+  height: var(--header-height);
+  min-height: var(--header-height);
+  flex-shrink: 0;
+}
+
+/* Scrollable products section */
+main > section:nth-child(2) {
+  flex: 1;
+  overflow-y: auto;
+  background: black;
+  /* Scale original padding values */
+  padding: calc(32px * var(--figma-scale-factor));
+  padding-bottom: calc(200px * var(--figma-scale-factor)); /* Scale original footer space */
+  /* Ensure min-height considers the target height and scaled header */
+  min-height: calc(var(--target-height) - var(--header-height)); 
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+main > section:nth-child(2)::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+main > section:nth-child(2) {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Progress bar animation for loading state */
+.progress-bar-fill {
+  width: 0%;
+  animation: progressFill 8s ease-out forwards;
+}
+
+@keyframes progressFill {
+  0% { width: 0% }
+  100% { width: 100% }
+} 

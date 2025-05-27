@@ -1,0 +1,466 @@
+Comparaciones con la imagen de referencia 'FotoClienteCamara.jpg':
+Comparando con photo100.jpg: similitud = 0.03067604824900627
+Comparando con photo104.jpg: similitud = 0.08335669338703156
+Comparando con photo107.jpg: similitud = 0.010752532631158829
+Comparando con photo106.jpg: similitud = 0.051615819334983826
+Comparando con photo108.jpg: similitud = 0.015398439951241016
+Comparando con photo109.jpg: similitud = 0.03653101995587349
+Comparando con photo11.jpg: similitud = 0.011869695968925953
+Comparando con photo103.jpg: similitud = 0.010144762694835663
+Comparando con photo101.jpg: similitud = 0.06254514306783676
+Comparando con photo113.jpg: similitud = 0.01325086411088705
+Comparando con photo10.jpg: similitud = 0.005157298408448696
+Comparando con photo102.jpg: similitud = 0.032950885593891144
+Comparando con photo105.jpg: similitud = 0.030844738706946373
+Comparando con photo116.jpg: similitud = 0.07233767956495285
+Comparando con photo115.jpg: similitud = 0.04526171088218689
+Comparando con photo12.jpg: similitud = 0.006175886373966932
+Comparando con photo110.jpg: similitud = 0.02979697473347187
+Comparando con photo124.jpg: similitud = 0.0009621017961762846
+Comparando con photo125.jpg: similitud = 0.0007967412821017206
+Comparando con photo126.jpg: similitud = 0.014755187556147575
+Comparando con photo122.jpg: similitud = 0.48470526933670044
+Comparando con photo119.jpg: similitud = 0.08668359369039536
+Comparando con photo114.jpg: similitud = 0.010574180632829666
+Comparando con photo112.jpg: similitud = 0.009591733105480671
+Comparando con photo118.jpg: similitud = 0.11705156415700912
+Comparando con photo111.jpg: similitud = 0.0114807840436697
+Comparando con photo128.jpg: similitud = 0.02617119438946247
+Comparando con photo129.jpg: similitud = 0.01744360476732254
+Comparando con photo130.jpg: similitud = 0.004966105334460735
+Comparando con photo127.jpg: similitud = 0.004007505252957344
+Comparando con photo137.jpg: similitud = 0.0524769127368927
+Comparando con photo132.jpg: similitud = 0.10026751458644867
+Comparando con photo135.jpg: similitud = 0.004346172325313091
+Comparando con photo133.jpg: similitud = 0.08271954208612442
+Comparando con photo136.jpg: similitud = 0.012754587456583977
+Comparando con photo142.jpg: similitud = 0.004500166978687048
+Comparando con photo123.jpg: similitud = 0.09412169456481934
+Comparando con photo134.jpg: similitud = 0.019471658393740654
+Comparando con photo131.jpg: similitud = 0.005154588725417852
+Comparando con photo139.jpg: similitud = 0.023366019129753113
+Comparando con photo143.jpg: similitud = 0.0014364165253937244
+Comparando con photo138.jpg: similitud = 0.00639419024810195
+Comparando con photo117.jpg: similitud = 0.08398504555225372
+Comparando con photo141.jpg: similitud = 0.012553752399981022
+Comparando con photo145.jpg: similitud = 0.1400189995765686
+Comparando con photo140.jpg: similitud = 0.033799633383750916
+Comparando con photo146.jpg: similitud = 0.012204961851239204
+Comparando con photo151.jpg: similitud = 0.021707335487008095
+Comparando con photo152.jpg: similitud = 0.005867743864655495
+Comparando con photo15.jpg: similitud = 0.01077868603169918
+Comparando con photo150.jpg: similitud = 0.008068178780376911
+Comparando con photo156.jpg: similitud = 0.16197770833969116
+Comparando con photo147.jpg: similitud = 0.034127507358789444
+Comparando con photo144.jpg: similitud = 0.09046197682619095
+Comparando con photo153.jpg: similitud = 0.005002972204238176
+Comparando con photo154.jpg: similitud = 0.001724095898680389
+Comparando con photo148.jpg: similitud = 0.022516075521707535
+Comparando con photo149.jpg: similitud = 0.06336965411901474
+Comparando con photo158.jpg: similitud = 0.01121371891349554
+Comparando con photo155.jpg: similitud = 0.001724095898680389
+Comparando con photo159.jpg: similitud = 0.013546296395361423
+Comparando con photo163.jpg: similitud = 0.014635957777500153
+Comparando con photo162.jpg: similitud = 0.009041835553944111
+Comparando con photo157.jpg: similitud = 0.1145685464143753
+Comparando con photo16.jpg: similitud = 0.007198542822152376
+Comparando con photo161.jpg: similitud = 0.004291352350264788
+Comparando con photo164.jpg: similitud = 0.22288687527179718
+Comparando con photo160.jpg: similitud = 0.030705004930496216
+Comparando con photo169.jpg: similitud = 0.021566083654761314
+Comparando con photo168.jpg: similitud = 0.005282362457364798
+Comparando con photo166.jpg: similitud = 0.00709060113877058
+Comparando con photo167.jpg: similitud = 0.010104731656610966
+Comparando con photo171.jpg: similitud = 0.002369622001424432
+Comparando con photo165.jpg: similitud = 0.09512317925691605
+Comparando con photo170.jpg: similitud = 0.0029744282364845276
+Comparando con photo172.jpg: similitud = 0.02343091554939747
+Comparando con photo177.jpg: similitud = 0.014861786738038063
+Comparando con photo176.jpg: similitud = 0.007254664786159992
+Comparando con photo175.jpg: similitud = 0.01777281053364277
+Comparando con photo173.jpg: similitud = 0.11683948338031769
+Comparando con photo178.jpg: similitud = 0.020708102732896805
+Comparando con photo181.jpg: similitud = 0.05868324637413025
+Comparando con photo174.jpg: similitud = 0.01176020409911871
+Comparando con photo17.jpg: similitud = 0.017133640125393867
+Comparando con photo182.jpg: similitud = 0.005658434238284826
+Comparando con photo179.jpg: similitud = 0.04803449660539627
+Comparando con photo183.jpg: similitud = 0.0021432058420032263
+Comparando con photo187.jpg: similitud = 0.5875872373580933
+Error comparando con photo189.jpg: Error calling Match: An error occurred while sending the request.
+Error comparando con photo191.jpg: Error calling Match: An error occurred while sending the request.
+Error comparando con photo186.jpg: Error calling Match: An error occurred while sending the request.
+Error comparando con photo190.jpg: Error calling Match: An error occurred while sending the request.
+Error comparando con photo193.jpg: Error calling Match: An error occurred while sending the request.
+Error comparando con photo18.jpg: Error calling Match: An error occurred while sending the request.
+Error comparando con photo199.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo20.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo200.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo201.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo202.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo203.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo204.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo205.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo206.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo207.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo208.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo209.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo210.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo211.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo212.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo213.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo214.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo215.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo216.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo217.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo218.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo219.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo220.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo221.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo222.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo223.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo224.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo225.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo226.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo227.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo228.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo229.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo230.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo231.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo232.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo233.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo234.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo235.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo236.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo237.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo238.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo239.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo240.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo241.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo242.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo243.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo244.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo245.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo246.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo247.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo248.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo249.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo250.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo251.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo252.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo253.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo254.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo255.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo256.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo257.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo258.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo259.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo260.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo261.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo262.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo263.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo264.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo265.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo266.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo267.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo268.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo269.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo270.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo271.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo272.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo273.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo274.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo275.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo276.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo277.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo278.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo279.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo280.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo281.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo282.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo283.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo284.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo285.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo286.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo287.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo288.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo289.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo290.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo291.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo292.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo293.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo294.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo295.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo296.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo297.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo298.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo299.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo300.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo301.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo302.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo303.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo304.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo305.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo306.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo307.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo308.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo309.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo310.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo311.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo312.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo313.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo314.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo315.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo316.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo317.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo318.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo319.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo320.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo321.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo322.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo323.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo324.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo325.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo326.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo327.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo328.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo329.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo33.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo330.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo331.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo332.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo333.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo334.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo335.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo336.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo337.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo338.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo339.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo34.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo340.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo341.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo342.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo343.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo344.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo345.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo346.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo347.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo348.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo349.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo350.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo351.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo352.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo353.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo354.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo355.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo356.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo357.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo358.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo359.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo360.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo361.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo362.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo363.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo364.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo365.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo366.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo367.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo368.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo369.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo37.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo370.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo371.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo372.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo373.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo374.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo375.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo376.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo377.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo378.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo379.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo38.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo380.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo381.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo382.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo383.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo384.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo385.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo386.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo387.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo388.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo389.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo390.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo391.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo392.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo393.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo394.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo395.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo396.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo397.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo398.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo399.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo40.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo400.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo401.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo402.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo403.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo404.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo405.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo406.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo407.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo408.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo409.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo41.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo410.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo411.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo412.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo413.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo414.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo415.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo416.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo417.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo418.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo419.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo42.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo420.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo421.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo422.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo423.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo424.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo425.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo426.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo427.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo428.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo429.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo43.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo430.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo431.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo432.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo433.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo434.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo435.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo436.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo437.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo438.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo439.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo44.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo440.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo441.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo442.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo443.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo444.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo445.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo446.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo447.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo448.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo449.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo45.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo450.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo451.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo452.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo453.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo454.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo455.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo456.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo457.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo458.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo459.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo460.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo461.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo462.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo463.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo464.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo465.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo466.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo467.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo468.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo469.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo470.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo471.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo472.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo473.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo474.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo475.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo476.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo477.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo478.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo479.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo480.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo481.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo482.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo483.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo484.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo485.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo486.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo487.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo488.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo489.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo490.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo491.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo492.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo493.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo494.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo495.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo496.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo497.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo498.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo499.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo500.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo501.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo52.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo53.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo54.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo55.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo56.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo57.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo58.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo59.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo60.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo61.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo64.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo65.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo66.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo67.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo68.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo69.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo7.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo70.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo71.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo72.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo73.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo74.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo75.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo76.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo77.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo78.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo79.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo80.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo81.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo82.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo83.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo84.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo85.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo86.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo87.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo88.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo89.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo9.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo90.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo91.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo94.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo95.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo96.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo97.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo98.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo99.jpg: Error calling Match: Host desconocido. (faceapi.regulaforensics.com:443)
+Error comparando con photo194.jpg: Error calling Match: Se ha intentado una operación de socket en un host no accesible. (faceapi.regulaforensics.com:443)
+Error comparando con photo195.jpg: Error calling Match: Se ha intentado una operación de socket en un host no accesible. (faceapi.regulaforensics.com:443)
+Error comparando con photo196.jpg: Error calling Match: Se ha intentado una operación de socket en un host no accesible. (faceapi.regulaforensics.com:443)
+Error comparando con photo197.jpg: Error calling Match: Se ha intentado una operación de socket en un host no accesible. (faceapi.regulaforensics.com:443)
+Error comparando con photo198.jpg: Error calling Match: Se ha intentado una operación de socket en un host no accesible. (faceapi.regulaforensics.com:443)
+Error comparando con photo180.jpg: Error calling Match: The operation was canceled.
+Error comparando con photo184.jpg: Error calling Match: The operation was canceled.
+Error comparando con photo185.jpg: Error calling Match: The operation was canceled.
+Error comparando con photo188.jpg: Error calling Match: The operation was canceled.
+Error comparando con photo19.jpg: Error calling Match: The operation was canceled.
+Error comparando con photo192.jpg: Error calling Match: The operation was canceled.
