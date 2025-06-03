@@ -130,6 +130,34 @@ export class RappiInventoryService {
     };
   }
 
+ /**
+  * // API Rappi Inventory
+  */
+
+ private async uploadToRappiAPI(records: any[]): Promise<void>  {
+  const apiUrl = 'https://services.grability.rappi.com/api/cpgs-integration/datasets';
+  const apiKey = 'f1851d96-64ee-4dc4-bf2b-9c442e22240f'; // API key for authentication
+  const payload = {
+    type: '',
+    records // The records to be uploaded
+  };
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'api_key': apiKey
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to upload to Rappi API: ${response.status} - ${errorText}`);
+  }
+
+  console.log('[RAPPI INVENTORY] Successfully uploaded to Rappi API.');
+}
+
   /**
    * Generate CSV content from inventory items
    */
@@ -232,7 +260,10 @@ export class RappiInventoryService {
         productsWithStock: rappiItems.filter(item => item.stock > 0).length,
         productsOutOfStock: rappiItems.filter(item => item.stock === 0).length
       };
-      
+
+      // Upload to Rappi API
+      await this.uploadToRappiAPI(rappiItems);
+      console.log('[RAPPI INVENTORY] Uploaded inventory to Rappi API successfully.');      
       console.log('[RAPPI INVENTORY] Statistics:', stats);
       
       // Generate CSV content
@@ -327,3 +358,4 @@ const defaultConfig: RappiInventoryConfig = {
 
 // Create and export singleton instance
 export const rappiInventoryService = new RappiInventoryService(defaultConfig); 
+

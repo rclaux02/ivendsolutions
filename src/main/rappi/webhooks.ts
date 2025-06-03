@@ -13,7 +13,7 @@ import { Request, Response, NextFunction, RequestHandler } from 'express';
 
 // Set environment variables explicitly
 const PORT = 8081;
-const RAPPI_API_KEY = '1d54fd91d5282798eba6a8b4cd8e0ecd8c07fb50eb43137ab27a99f32ae198c8';
+const RAPPI_API_KEY = 'f1851d96-64ee-4dc4-bf2b-9c442e22240f' // Test '1d54fd91d5282798eba6a8b4cd8e0ecd8c07fb50eb43137ab27a99f32ae198c8';
 
 // Tests Chile
 // const RAPPI_STORE_ID_TEST = 9953; // store id test de Rappi Chile
@@ -22,8 +22,8 @@ const RAPPI_API_KEY = '1d54fd91d5282798eba6a8b4cd8e0ecd8c07fb50eb43137ab27a99f32
 // const RAPPI_BASE_URL = 'https://services.rappi.cl/api/open-api';
 
 // Tests Peru
-const RAPPI_CLIENT_ID = 'ugRKsfn27Au5jEmkcaIDrbDFHlkderHv';
-const RAPPI_CLIENT_SECRET = 'cgAC7VMO6--j6qj-WLxPO9a1MGVVEQcwYiniPDnwoLP-3WOEnzfM0NKB0b-BD-cP';
+const RAPPI_CLIENT_ID = '7QX2s459mffWRUhbbGhgXn1TrzIwjKE1' // Test 'ugRKsfn27Au5jEmkcaIDrbDFHlkderHv';
+const RAPPI_CLIENT_SECRET = 'Wui1NCI2BkbLzrDMu1Qq0MD4aO3HEq0377IzVIx83f1s2vptQ5LGMrzxQQBN4AxG'// Test 'cgAC7VMO6--j6qj-WLxPO9a1MGVVEQcwYiniPDnwoLP-3WOEnzfM0NKB0b-BD-cP';
 const RAPPI_BASE_URL = 'https://services.rappi.pe/api/open-api';
 const RAPPI_STORE_ID_TEST = 59434; // store id real de Vapebox Rappi Peru
 
