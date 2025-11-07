@@ -111,6 +111,27 @@ const TestDispenseModal: React.FC<TestDispenseModalProps> = ({
           setTestDispenseItems([{ productId: String(product.id), quantity: 2, product }]);
         }
       }
+    },
+    {
+      name: "Producto 75 - Multi-Slot (25+32)",
+      description: "Probar dispensar 2 unidades del producto 75 usando slots X y Z",
+      setup: () => {
+        // Buscar específicamente el producto 75
+        const product75 = products.find(p => p.id === '75');
+        if (product75) {
+          // Simular que tenemos 2 unidades del producto 75
+          // El sistema debería dispensar 1 del slot 25 y 1 del slot 32
+          setTestDispenseItems([{ 
+            productId: '75', 
+            quantity: 2, 
+            product: product75 
+          }]);
+          addSimulationLog(`Configurado: Producto 75 (${product75.FS_SABOR || product75.name}) - 2 unidades`, 'info');
+          addSimulationLog(`Simulando: Dispensado de slots 25 y 32 (1 unidad de cada uno)`, 'info');
+        } else {
+          addSimulationLog(`Error: Producto 75 no encontrado en la base de datos`, 'error');
+        }
+      }
     }
   ];
 
@@ -123,22 +144,86 @@ const TestDispenseModal: React.FC<TestDispenseModalProps> = ({
   };
 
   // Simulate hardware behavior without actually calling hardware
-  const simulateDispenseHardware = async (slotId: string, quantity: number): Promise<{success: boolean; message?: string}> => {
+  const simulateDispenseHardware = async (
+    slotId: string, 
+    quantity: number, 
+    usedSlots?: Array<{slotId: string, quantityDispensed: number}>,
+    isMultiSlot?: boolean
+  ): Promise<{success: boolean; message?: string}> => {
     // Add initial log for simulation
+    if (isMultiSlot && usedSlots) {
+      addSimulationLog(`Iniciando simulación de dispensado multi-slot: ${usedSlots.map(s => `${s.slotId}(${s.quantityDispensed})`).join(', ')}`, 'info');
+    } else {
     addSimulationLog(`Iniciando simulación de dispensado para slot ${slotId}, cantidad ${quantity}`, 'info');
+    }
     
     return new Promise((resolve) => {
       setIsSimulating(true);
       
       if (simulationMode === 'fixed') {
-        // Simulate the FIXED behavior - motor turns once per unit
-        addSimulationLog(`[SIMULACIÓN - MODO CORREGIDO] Dispensando ${quantity} unidades usando múltiples ciclos de motor`, 'hardware');
-        
-        // Log Arduino commands in sequence
+        if (isMultiSlot && usedSlots) {
+          // Multi-slot simulation
+          addSimulationLog(`[SIMULACIÓN - MODO CORREGIDO] Dispensando desde múltiples slots`, 'hardware');
+          
+          let slotIndex = 0;
+          let unitCount = 0;
+          let totalUnits = usedSlots.reduce((sum, slot) => sum + slot.quantityDispensed, 0);
+          
+          const processNextSlot = () => {
+            if (slotIndex >= usedSlots.length) {
+              // All slots processed
+              addSimulationLog(`[SIMULACIÓN] Completado el dispensado multi-slot: ${totalUnits} unidades totales`, 'success');
+              setIsSimulating(false);
+              resolve({ success: true });
+              return;
+            }
+            
+            const currentSlot = usedSlots[slotIndex];
+            const { slotId: currentSlotId, quantityDispensed: slotQuantity } = currentSlot;
+            
+            addSimulationLog(`[SIMULACIÓN] Procesando slot ${currentSlotId}: ${slotQuantity} unidades`, 'hardware');
+            
+            let unitInSlot = 0;
+            const processUnitInSlot = () => {
+              unitInSlot++;
+              unitCount++;
+              
         setTimeout(() => {
-          // First command - Initialize sequence
-          addSimulationLog(`[ARDUINO 64] Enviando "I42S" (comando de inicialización de dispensado)`, 'command');
+                addSimulationLog(`[ARDUINO 64] Enviando "M${currentSlotId}F" para la unidad ${unitCount}/${totalUnits}`, 'command');
         }, 500);
+              
+              setTimeout(() => {
+                addSimulationLog(`[ARDUINO 40] Recibido "MMOK" (comando de motor recibido)`, 'command');
+              }, 1000);
+              
+              setTimeout(() => {
+                addSimulationLog(`[ARDUINO 41] Recibido "SNOK" (sensor activado - producto dispensado)`, 'command');
+              }, 1500);
+              
+              setTimeout(() => {
+                addSimulationLog(`[ARDUINO 43] Recibido "STPOK" (proceso completado para unidad ${unitCount}/${totalUnits})`, 'command');
+                
+                if (unitInSlot < slotQuantity) {
+                  // More units in this slot
+                  setTimeout(processUnitInSlot, 1500);
+                } else {
+                  // Slot completed, move to next slot
+                  addSimulationLog(`[SIMULACIÓN] Completado slot ${currentSlotId}: ${slotQuantity} unidades`, 'success');
+                  slotIndex++;
+                  setTimeout(processNextSlot, 1000);
+                }
+              }, 2000);
+            };
+            
+            // Start processing this slot
+            setTimeout(processUnitInSlot, 1000);
+          };
+          
+          // Start with first slot
+          processNextSlot();
+        } else {
+          // Single slot simulation (existing logic)
+          addSimulationLog(`[SIMULACIÓN - MODO CORREGIDO] Dispensando ${quantity} unidades usando múltiples ciclos de motor`, 'hardware');
         
         let unitCount = 0;
         const processUnit = () => {
@@ -146,14 +231,9 @@ const TestDispenseModal: React.FC<TestDispenseModalProps> = ({
           const currentUnit = unitCount;
           
           setTimeout(() => {
-            // Ready for motor command response
-            addSimulationLog(`[ARDUINO 40] Recibido "MTROK" (listo para comando de motor)`, 'command');
-          }, 200);
-          
-          setTimeout(() => {
-            // Send motor command
-            addSimulationLog(`[ARDUINO 60] Enviando "M${slotId}F" para la unidad ${currentUnit}/${quantity}`, 'command');
-          }, 600);
+              // Send motor command directly (no I42S needed)
+              addSimulationLog(`[ARDUINO 64] Enviando "M${slotId}F" para la unidad ${currentUnit}/${quantity}`, 'command');
+            }, 500);
           
           setTimeout(() => {
             // Motor command received
@@ -184,35 +264,26 @@ const TestDispenseModal: React.FC<TestDispenseModalProps> = ({
         
         // Start processing the first unit after a delay
         setTimeout(processUnit, 1000);
+        }
       } else {
         // Simulate the BUGGY behavior - motor only turns once regardless of quantity
         addSimulationLog(`[SIMULACIÓN - MODO BUG] Dispensando ${quantity} unidades con un ÚNICO ciclo de motor (bug)`, 'hardware');
         
         // Log Arduino commands for buggy behavior
         setTimeout(() => {
-          // First command - Initialize sequence (only once)
-          addSimulationLog(`[ARDUINO 64] Enviando "I42S" (comando de inicialización de dispensado)`, 'command');
+          // Send motor command directly (no I42S needed)
+          addSimulationLog(`[ARDUINO 64] Enviando "M${slotId}F" (UN SOLO comando para ${quantity} unidades)`, 'command');
         }, 500);
-        
-        setTimeout(() => {
-          // Ready for motor command response
-          addSimulationLog(`[ARDUINO 40] Recibido "MTROK" (listo para comando de motor)`, 'command');
-        }, 1000);
-        
-        setTimeout(() => {
-          // Send motor command (only once regardless of quantity)
-          addSimulationLog(`[ARDUINO 60] Enviando "M${slotId}F" (UN SOLO comando para ${quantity} unidades)`, 'command');
-        }, 1500);
         
         setTimeout(() => {
           // Motor command received
           addSimulationLog(`[ARDUINO 40] Recibido "MMOK" (comando de motor recibido)`, 'command');
-        }, 2000);
+        }, 1000);
         
         setTimeout(() => {
           // Sensor activation
           addSimulationLog(`[ARDUINO 41] Recibido "SNOK" (sensor activado - UN SOLO producto dispensado)`, 'command');
-        }, 2500);
+        }, 1500);
         
         setTimeout(() => {
           // Process complete - but only for one unit!
@@ -244,35 +315,68 @@ const TestDispenseModal: React.FC<TestDispenseModalProps> = ({
         setTestDispenseStatus(`Procesando ${item.quantity} unidades de ${item.product.name}...`);
         addSimulationLog(`Procesando ${item.quantity} unidades de ${item.product.name}...`, 'info');
         
-        // Get slot information from database
-        const productSlotId = item.product.slot_id;
-        addSimulationLog(`Usando slot asignado del producto: ${productSlotId}`, 'info');
-        const dbResult = await dispenseProductDb(String(item.productId), productSlotId, item.quantity);
+        // Use multi-slot dispensing by NOT passing a specific slotId
+        // This will allow the system to automatically find and use multiple slots
+        addSimulationLog(`Activando multi-slot dispensing automático para producto ${item.productId}`, 'info');
+        const dbResult = await dispenseProductDb(String(item.productId), undefined, item.quantity);
         
         if (!dbResult.success) {
-          throw new Error(dbResult.message || `Error al encontrar slot disponible para el producto ${item.productId}`);
+          throw new Error(dbResult.message || `Error al dispensar producto ${item.productId} usando multi-slot`);
         }
         
-        const { slotId, quantityDispensed = 0 } = dbResult;
-        addSimulationLog(`Usando slot ${slotId} para dispensar ${quantityDispensed} unidades`, 'success');
+        const { slotId, quantityDispensed = 0, usedSlots, isMultiSlot } = dbResult;
+        addSimulationLog(`Multi-slot dispensing exitoso: ${quantityDispensed} unidades dispensadas`, 'success');
+        
+        if (isMultiSlot && usedSlots) {
+          addSimulationLog(`Dispensando desde múltiples slots: ${usedSlots.map((s: {slotId: string, quantityDispensed: number}) => `${s.slotId}(${s.quantityDispensed})`).join(', ')}`, 'info');
+        }
         
         // Use actual hardware instead of simulation
         let motorResult;
         if (!useRealHardware) {
-          motorResult = await simulateDispenseHardware(slotId, quantityDispensed);
+          motorResult = await simulateDispenseHardware(slotId, quantityDispensed, usedSlots, isMultiSlot);
         } else {
           // Call the actual hardware one unit at a time
-          addSimulationLog(`[HARDWARE] Conectando con Arduino real para dispensar ${quantityDispensed} unidades del slot ${slotId} (una por una)`, 'hardware');
+          addSimulationLog(`[HARDWARE] Conectando con Arduino real para dispensar ${quantityDispensed} unidades`, 'hardware');
           
           let allSuccess = true;
           let lastError = '';
           let successfulDispenses = 0;
           
-          // Loop through each unit and dispense one at a time
+          if (isMultiSlot && usedSlots) {
+            // Multi-slot dispensing: dispense from each slot individually
+            addSimulationLog(`[HARDWARE] Iniciando dispensado multi-slot: ${usedSlots.length} slots`, 'hardware');
+            
+            for (const slotInfo of usedSlots) {
+              const { slotId: currentSlotId, quantityDispensed: slotQuantity } = slotInfo;
+              addSimulationLog(`[HARDWARE] Procesando slot ${currentSlotId}: ${slotQuantity} unidades`, 'hardware');
+              
+              // Dispense from this specific slot
+              for (let i = 0; i < slotQuantity; i++) {
+                addSimulationLog(`[HARDWARE] Dispensando unidad ${i+1}/${slotQuantity} del slot ${currentSlotId}`, 'command');
+                
+                const singleResult = await dispenseProduct(currentSlotId, 1);
+                
+                if (singleResult.success) {
+                  successfulDispenses++;
+                  addSimulationLog(`[HARDWARE] Unidad ${i+1}/${slotQuantity} del slot ${currentSlotId} dispensada exitosamente`, 'success');
+                } else {
+                  allSuccess = false;
+                  lastError = singleResult.message || `Error al dispensar unidad ${i+1}/${slotQuantity} del slot ${currentSlotId}`;
+                  addSimulationLog(`[HARDWARE] Error al dispensar unidad ${i+1}/${slotQuantity} del slot ${currentSlotId}: ${lastError}`, 'error');
+                  break;
+                }
+              }
+              
+              if (!allSuccess) break; // Stop on first error
+            }
+          } else {
+            // Single slot dispensing: dispense all units from one slot
+            addSimulationLog(`[HARDWARE] Dispensando ${quantityDispensed} unidades del slot ${slotId} (una por una)`, 'hardware');
+            
           for (let i = 0; i < quantityDispensed; i++) {
             addSimulationLog(`[HARDWARE] Dispensando unidad ${i+1}/${quantityDispensed} del slot ${slotId}`, 'command');
             
-            // Dispense one unit at a time
             const singleResult = await dispenseProduct(slotId, 1);
             
             if (singleResult.success) {
@@ -282,7 +386,8 @@ const TestDispenseModal: React.FC<TestDispenseModalProps> = ({
               allSuccess = false;
               lastError = singleResult.message || `Error al dispensar unidad ${i+1}/${quantityDispensed}`;
               addSimulationLog(`[HARDWARE] Error al dispensar unidad ${i+1}/${quantityDispensed}: ${lastError}`, 'error');
-              break; // Stop on first error
+                break;
+              }
             }
           }
           
@@ -481,7 +586,7 @@ const TestDispenseModal: React.FC<TestDispenseModalProps> = ({
                           />
                         </div>
                         <div>
-                          <div className="font-semibold">{item.product.name}</div>
+                          <div className="font-semibold">{item.product.FS_SABOR || item.product.name}</div>
                           <div className="text-sm text-gray-600">Slot: {item.product.slot_id}</div>
                         </div>
                       </div>

@@ -64,6 +64,16 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
     }
     
+    // Calculate total items in cart (sum of all quantities)
+    const totalItemsInCart = cart.items.reduce((total, item) => total + item.quantity, 0);
+    
+    // Check if adding this product would exceed the 5 item limit
+    if (totalItemsInCart >= 5) {
+      return {
+        success: false
+      };
+    }
+    
     setCart(prevCart => {
       const existingItem = prevCart.items.find(item => item.product.id === product.id);
       
@@ -109,6 +119,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return {
         success: false,
         message: `Solo contamos con ${availableStock} unidades en stock, pero puedes elegir otros productos`
+      };
+    }
+    
+    // Calculate total items in cart if we update this item's quantity
+    const currentTotal = cart.items.reduce((total, item) => total + item.quantity, 0);
+    const currentItemQuantity = cartItem.quantity;
+    const newTotal = currentTotal - currentItemQuantity + quantity;
+    
+    // Check if the new total would exceed the 5 item limit
+    if (newTotal > 5) {
+      return {
+        success: false
       };
     }
     

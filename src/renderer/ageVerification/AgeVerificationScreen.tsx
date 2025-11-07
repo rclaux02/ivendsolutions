@@ -14,7 +14,7 @@ const AgeVerificationScreen: React.FC<AgeVerificationScreenProps> = ({
   onFailure,
   onCancel
 }) => {
-  const [timeLeft, setTimeLeft] = useState(60);
+  const [timeLeft, setTimeLeft] = useState(30);
   const [verificationStatus, setVerificationStatus] = useState<'idle' | 'processing' | 'success' | 'failure'>('idle');
   const [statusMessage, setStatusMessage] = useState('Please scan your ID document');
   

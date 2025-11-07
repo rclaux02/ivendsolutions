@@ -16,4 +16,6 @@ export {
 } from './dbConnection';
 
 // Export types for convenience
-export type { ConnectionOptions, Connection, Pool, PoolConnection } from 'mysql2/promise'; 
+export type { ConnectionOptions, Connection, Pool, PoolConnection } from 'mysql2/promise';
+
+ 

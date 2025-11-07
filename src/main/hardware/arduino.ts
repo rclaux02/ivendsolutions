@@ -26,6 +26,11 @@ export class ArduinoController extends EventEmitter {
   private connectionAttempts: number = 0;
   private maxConnectionAttempts: number = 5;
   private deviceType: string = 'USB-SERIAL CH340';
+  
+  // 🌡️ NUEVAS PROPIEDADES PARA TEMPERATURA
+  private temperatureInterval: NodeJS.Timeout | null = null;
+  private currentTemperature: number | null = null;
+  private temperatureUpdateCallback: ((temp: number) => void) | null = null;
 
 
   constructor(portPath: string = 'COM5', baudRate: number = 9600) {
@@ -111,7 +116,7 @@ export class ArduinoController extends EventEmitter {
           resolve(false);
         }, 5000); // 5 second timeout
 
-        this.port.open((err) => {
+        this.port.open(async (err) => {
           clearTimeout(openTimeout);
           
           if (err) {
@@ -119,39 +124,8 @@ export class ArduinoController extends EventEmitter {
             console.error('[ARDUINO 17] Error details:', JSON.stringify(err, null, 2));
             console.error(`[ARDUINO 18] Error code: ${(err as any).code || 'N/A'}, Error syscall: ${(err as any).syscall || 'N/A'}`);
             
-            // Provide more specific guidance for access denied errors
-            if (err.message.includes('Access denied')) {
-              console.error(`
-                [ARDUINO 19] Access denied to port ${this.portPath}. This could be due to:
-                1. Another application is using the port
-                2. You don't have sufficient permissions
-                3. The port name is incorrect
-                
-                Try the following:
-                - Close any other applications that might be using the port
-                - Run the application with administrator privileges
-                - Check if the device is properly connected
-                - Verify the correct COM port in Device Manager
-                - Try a different USB port on your computer
-                - Restart your computer to release any locked ports
-              `);
-              
-              // Try to get more information about the port
-              try {
-                const { exec } = require('child_process');
-                exec(`mode ${this.portPath}`, (execErr: any, stdout: string, stderr: string) => {
-                  if (execErr) {
-                    console.error(`[ARDUINO 20] Error getting port information: ${execErr.message}`);
-                  } else {
-                    console.log(`[ARDUINO 21] Port information for ${this.portPath}:\n${stdout}`);
-                  }
-                });
-              } catch (execErr) {
-                console.error('[ARDUINO 22] Error executing mode command:', execErr);
-              }
-            }
-            
-            resolve(false);
+            // Try alternative ports
+            this.tryAlternativePorts(resolve);
             return;
           }
 
@@ -169,6 +143,9 @@ export class ArduinoController extends EventEmitter {
           // Mark as connected
           this.isConnected = true;
           console.log(`[ARDUINO 26] Successfully connected to ${this.deviceType} on ${this.portPath}`);
+          
+          // Initialize temperature system after successful connection
+          await this.initializeTemperatureSystem();
           
           // Process any queued commands
           if (this.commandQueue.length > 0) {
@@ -344,9 +321,6 @@ export class ArduinoController extends EventEmitter {
       } else if (data.includes('RCVOK')) {
         console.log(`[ARDUINO 38] Board received the initiation command`);
         this.emit('initCommandReceived');
-      } else if (data.includes('MTROK')) {
-        console.log(`[ARDUINO 39] Board is ready to accept motor command`);
-        this.emit('readyForMotorCommand');
       } else if (data.includes('MMOK')) {
         console.log(`[ARDUINO 40] Board received the motor move command`);
         this.emit('motorCommandReceived');
@@ -365,6 +339,47 @@ export class ArduinoController extends EventEmitter {
         console.error(`[ARDUINO 44] Error response from board:`, data);
         this.isProcessingCommand = false;
         this.processCommandQueue();
+      }
+      
+      // 🚀 CAPTURAR TODOS LOS MENSAJES DE ERROR DEL ARDUINO
+      // Capturar errores específicos de motores y formato
+      if (data.includes('Error: Se excedio el maximo de 10 motores')) {
+        console.error(`[ARDUINO ERROR] 🚨 MOTOR LIMIT EXCEEDED: Maximum of 10 motors exceeded`);
+        this.emit('motorError', { type: 'MOTOR_LIMIT_EXCEEDED', message: data });
+      } else if (data.includes('Error: Numero de motor invalido o fuera de rango')) {
+        console.error(`[ARDUINO ERROR] 🚨 INVALID MOTOR NUMBER: Motor number invalid or out of range`);
+        this.emit('motorError', { type: 'INVALID_MOTOR_NUMBER', message: data });
+      } else if (data.includes('Error: Formato de lista de motores invalido')) {
+        console.error(`[ARDUINO ERROR] 🚨 INVALID MOTOR LIST FORMAT: Motor list format is invalid`);
+        this.emit('motorError', { type: 'INVALID_MOTOR_LIST_FORMAT', message: data });
+      } else if (data.includes('ERROR:') && data.includes('%d')) {
+        console.error(`[ARDUINO ERROR] 🚨 GENERAL OPERATION ERROR: ${data}`);
+        this.emit('motorError', { type: 'GENERAL_OPERATION_ERROR', message: data });
+      }
+      
+      // Capturar cualquier otro mensaje que contenga "Error:" o "ERROR:"
+      if (data.toLowerCase().includes('error:') || data.toLowerCase().includes('error ')) {
+        console.error(`[ARDUINO ERROR] 🚨 UNKNOWN ERROR: ${data}`);
+        this.emit('motorError', { type: 'UNKNOWN_ERROR', message: data });
+      }
+
+      // 🌡️ MANEJO DE RESPUESTAS DE TEMPERATURA
+      if (data.includes('TEMP:')) {
+        console.log(`[ARDUINO TEMP] Temperature response received: ${data}`);
+        // Extraer temperatura del formato "TEMP: 7.18 C"
+        const tempMatch = data.match(/TEMP:\s*([\d.]+)\s*C/);
+        if (tempMatch) {
+          const temperature = parseFloat(tempMatch[1]);
+          this.currentTemperature = temperature;
+          console.log(`[ARDUINO TEMP] Parsed temperature: ${temperature}°C`);
+          
+          this.emit('temperatureUpdate', temperature);
+          
+          // Llamar callback si existe
+          if (this.temperatureUpdateCallback) {
+            this.temperatureUpdateCallback(temperature);
+          }
+        }
       }
     });
     
@@ -393,6 +408,11 @@ export class ArduinoController extends EventEmitter {
     
     this.emit('disconnect');
     this.startReconnectInterval();
+
+    // Clean up temperature monitoring
+    this.stopTemperatureMonitoring();
+    this.currentTemperature = null;
+    this.temperatureUpdateCallback = null;
   }
 
   /**
@@ -544,36 +564,54 @@ export class ArduinoController extends EventEmitter {
       return Promise.reject(new Error(`Cannot dispense product: ${this.deviceType} not connected to ${this.portPath}`));
     }
     
+    // Check if Arduino is currently processing a command
+    if (this.isProcessingCommand) {
+      console.log(`[ARDUINO 59.1] Arduino is currently processing a command, waiting...`);
+      console.log(`[ARDUINO 59.2] Command queue length: ${this.commandQueue.length}`);
+      
+      // Wait for current command to complete
+      await new Promise<void>((resolve) => {
+        const checkInterval = setInterval(() => {
+          if (!this.isProcessingCommand) {
+            clearInterval(checkInterval);
+            console.log(`[ARDUINO 59.3] Arduino is now ready for new command`);
+            resolve();
+          }
+        }, 100);
+      });
+    }
+    
     return new Promise((resolve, reject) => {
       // Step 1: Set up listeners for the complete dispensing sequence
-      const onReadyForMotorCommand = async () => {
-        try {
-          console.log(`[ARDUINO 60] Sending motor command for motor ${motorNumber}`);
-          // Send the motor command in the format M{motorNumber}F
-          await this.sendCommand(`M${motorNumber}F`);
-        } catch (error: any) {
-          this.removeAllDispenseListeners();
-          reject(new Error(`Failed to send motor command: ${error.message}`));
-        }
+      const onMotorCommandReceived = () => {
+        console.log(`[ARDUINO 60] Motor command received for motor ${motorNumber}`);
+        // Wait for sensor activation
       };
       
       const onSensorActivated = (activated: boolean) => {
         if (activated) {
           console.log(`[ARDUINO 61] Sensor detected product drop for motor ${motorNumber}`);
-          // We don't resolve here, wait for STPOK which confirms the entire process is complete
+          // Wait for STPOK which confirms the entire process is complete
         } else {
           console.error(`[ARDUINO 62] Sensor failed to detect product drop for motor ${motorNumber}`);
+          console.log(`[ARDUINO 62.1] This might indicate a hardware issue or product stuck in slot`);
           // We still wait for STPOK, but log this as a potential issue
         }
       };
-      const onProductDispensed = () => {
+      
+      let onProductDispensed = () => {
         console.log(`[ARDUINO 63] Product dispensing process completed for motor ${motorNumber}`);
         this.removeAllDispenseListeners();
-        resolve();
+        
+        // Add a delay before resolving to ensure Arduino is ready for next command
+        setTimeout(() => {
+          console.log(`[ARDUINO 63.1] Resolving dispense promise for motor ${motorNumber} after delay`);
+          resolve();
+        }, 1000); // 1 second delay
       };
       
       const removeAllDispenseListeners = () => {
-        this.removeListener('readyForMotorCommand', onReadyForMotorCommand);
+        this.removeListener('motorCommandReceived', onMotorCommandReceived);
         this.removeListener('sensorActivated', onSensorActivated);
         this.removeListener('productDispensed', onProductDispensed);
       };
@@ -581,17 +619,33 @@ export class ArduinoController extends EventEmitter {
       this.removeAllDispenseListeners = removeAllDispenseListeners;
       
       // Set up the listeners for the dispensing sequence
-      this.on('readyForMotorCommand', onReadyForMotorCommand);
+      this.on('motorCommandReceived', onMotorCommandReceived);
       this.on('sensorActivated', onSensorActivated);
       this.on('productDispensed', onProductDispensed);
 
-      // Step 2: Start the dispensing sequence by sending I42S command
-      const motorInitiationCommand = 'I42S';
-      console.log(`[ARDUINO 64] Initiating motor move flow with command ${motorInitiationCommand}`);
-      this.sendCommand(motorInitiationCommand).catch((error: any) => {
+      // Step 2: Send the motor command directly in the format M{motorNumber}F
+      const motorCommand = `M${motorNumber}F`;
+      console.log(`[ARDUINO 64] Sending motor command: ${motorCommand}`);
+      
+      // Add a timeout for the entire dispensing process
+      const dispenseTimeout = setTimeout(() => {
+        console.error(`[ARDUINO 64.1] Dispense timeout for motor ${motorNumber} after 10 seconds`);
         removeAllDispenseListeners();
-        reject(new Error(`Failed to initiate dispensing: ${error.message}`));
+        reject(new Error(`Dispense timeout for motor ${motorNumber}`));
+      }, 10000); // 10 second timeout for entire process
+      
+      this.sendCommand(motorCommand).catch((error: any) => {
+        clearTimeout(dispenseTimeout);
+        removeAllDispenseListeners();
+        reject(new Error(`Failed to send motor command: ${error.message}`));
       });
+      
+      // Clear timeout when dispense completes
+      const originalOnProductDispensed = onProductDispensed;
+      onProductDispensed = () => {
+        clearTimeout(dispenseTimeout);
+        originalOnProductDispensed();
+      };
     });
   }
 
@@ -662,7 +716,6 @@ export class ArduinoController extends EventEmitter {
           
           try {
             // Parse the status response
-            // Example format: STATUS:{"temperature":25,"humidity":40,"slots":{"A1":"AVAILABLE","A2":"EMPTY"}}
             const statusJson = data.substring(data.indexOf('{'), data.lastIndexOf('}') + 1);
             const status = JSON.parse(statusJson);
             resolve({
@@ -744,6 +797,170 @@ export class ArduinoController extends EventEmitter {
       attemptedPorts: Array.from(this.attemptedPorts)
     };
   }
+
+  /**
+   * Set initial temperature from database
+   * @param temperature Temperature value from database
+   */
+  public async setInitialTemperature(temperature: number): Promise<void> {
+    // Redondear temperatura a entero para el comando
+    const tempInt = Math.round(temperature);
+    
+    if (!this.isConnected) {
+      console.log(`[ARDUINO TEMP] Not connected, queueing initial temperature command: I32,${tempInt}S`);
+      this.commandQueue.push(`I32,${tempInt}S`);
+      this.commandQueue.push('fan1');
+      return;
+    }
+
+    const command = `I32,${tempInt}S`;
+    console.log(`[ARDUINO TEMP] Setting initial temperature: ${command}`);
+    await this.sendCommand(command);
+    
+    // Send fan1 command after temperature initialization
+    console.log(`[ARDUINO TEMP] Sending fan1 command after temperature initialization`);
+    await this.sendCommand('fan1');
+  }
+
+  /**
+   * Get the last temperature from database
+   */
+  private async getLastTemperatureFromDB(): Promise<number | null> {
+    try {
+      // Import the database connection function
+      const { withConnection } = require('../database/dbConnection');
+      
+      const rows = await withConnection(async (connection: any) => {
+        const [result] = await connection.query('SELECT FS_TEMP FROM TA_TEMP ORDER BY FD_FEC_TEMP DESC LIMIT 1');
+        return result;
+      });
+      
+      return Array.isArray(rows) && rows.length > 0 ? rows[0].FS_TEMP : null;
+    } catch (error) {
+      console.error('[ARDUINO TEMP] Error fetching last temperature from DB:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get the last temperature from database and send initialization command
+   */
+  public async initializeTemperatureSystem(): Promise<void> {
+    try {
+      console.log('[ARDUINO TEMP] Initializing temperature system...');
+      
+      // Get last temperature from database
+      let lastTemp = await this.getLastTemperatureFromDB();
+      
+      // Si no hay temperatura previa, usar temperatura por defecto
+      if (lastTemp === null) {
+        lastTemp = 13; // Temperatura por defecto en grados Celsius
+        console.log(`[ARDUINO TEMP] No previous temperature found, using default: ${lastTemp}°C`);
+      } else {
+        console.log(`[ARDUINO TEMP] Using last temperature from database: ${lastTemp}°C`);
+      }
+      
+      // Redondear temperatura a entero para el comando
+      const tempInt = Math.round(lastTemp);
+      const initCommand = `I32,${tempInt}S`;
+      console.log(`[ARDUINO TEMP] Sending initialization command: ${initCommand}`);
+      
+      if (!this.isConnected) {
+        console.log(`[ARDUINO TEMP] Not connected, queueing init command: ${initCommand}`);
+        this.commandQueue.push(initCommand);
+        this.commandQueue.push('fan1');
+        return;
+      }
+      
+      // Send temperature initialization command
+      this.sendCommand(initCommand).then(() => {
+        console.log(`[ARDUINO TEMP] Temperature system initialized with temp: ${lastTemp}°C`);
+        
+        // Send fan1 command after temperature initialization
+        console.log(`[ARDUINO TEMP] Sending fan1 command after temperature initialization`);
+        this.sendCommand('fan1').then(() => {
+          console.log(`[ARDUINO TEMP] Fan1 command sent successfully`);
+        }).catch((error) => {
+          console.error('[ARDUINO TEMP] Error sending fan1 command:', error);
+        });
+      }).catch((error) => {
+        console.error('[ARDUINO TEMP] Error sending init command:', error);
+      });
+    } catch (error) {
+      console.error('[ARDUINO TEMP] Error initializing temperature system:', error);
+    }
+  }
+
+  /**
+   * Request temperature (every 2 minutes)
+   */
+  public async requestTemperature(): Promise<void> {
+    if (!this.isConnected) {
+      console.log(`[ARDUINO TEMP] Not connected, queueing temperature request: I30S`);
+      this.commandQueue.push('I30S');
+      return;
+    }
+
+    const command = 'I30S';
+    console.log(`[ARDUINO TEMP] Requesting temperature: ${command}`);
+    
+    // Send command without await since sendCommand is not async
+    this.sendCommand(command).then(() => {
+      console.log(`[ARDUINO TEMP] Temperature request sent: ${command}`);
+    }).catch((error) => {
+      console.error('[ARDUINO TEMP] Error sending temperature request:', error);
+    });
+  }
+
+  /**
+   * Start temperature monitoring (every 10 seconds)
+   */
+  public async startTemperatureMonitoring(): Promise<void> {
+    console.log('[ARDUINO TEMP] Starting temperature monitoring every 10 seconds');
+    
+    // Clear existing interval if any
+    if (this.temperatureInterval) {
+      clearInterval(this.temperatureInterval);
+    }
+
+    // Initialize temperature system first - CORREGIR: con await
+    await this.initializeTemperatureSystem();
+
+    // Set up interval for every 10 seconds (10000 ms)
+    this.temperatureInterval = setInterval(() => {
+      console.log('[ARDUINO TEMP] 10-second interval: requesting temperature');
+      this.requestTemperature();
+    }, 10000);
+  }
+
+  /**
+   * Stop temperature monitoring
+   */
+  public stopTemperatureMonitoring(): void {
+    console.log('[ARDUINO TEMP] Stopping temperature monitoring');
+    if (this.temperatureInterval) {
+      clearInterval(this.temperatureInterval);
+      this.temperatureInterval = null;
+    }
+  }
+
+  /**
+   * Get current temperature
+   */
+  public getCurrentTemperature(): number | null {
+    return this.currentTemperature;
+  }
+
+  /**
+   * Set temperature update callback
+   */
+  public setTemperatureUpdateCallback(callback: (temp: number) => void): void {
+    this.temperatureUpdateCallback = callback;
+  }
+
+  /**
+   * Clean up temperature monitoring on disconnect
+   */
 }
 
 // Export a singleton instance

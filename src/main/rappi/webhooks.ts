@@ -441,12 +441,29 @@ webhookApp.post('/webhook/order-created', async (req: Request, res: Response): P
 });
 
 // Start webhook server
-webhookApp.listen(PORT, () => {
-  console.log(`Rappi webhook server listening on port ${PORT}`);
-});
+const startWebhookServer = () => {
+  return new Promise((resolve, reject) => {
+    console.log('Starting webhook server on port', PORT);
+    try {
+      webhookApp.listen(PORT, () => {
+        console.log(`✅ Rappi webhook server listening on port ${PORT}`);
+        resolve(true);
+      }).on('error', (error: any) => {
+        console.error('❌ Error starting webhook server:', error);
+        reject(error);
+      });
+    } catch (error: any) {
+      console.error('❌ Exception starting webhook server:', error);
+      reject(error);
+    }
+  });
+};
 
 // Export for use in main process
-export const startRappiWebhooks = (): void => {
+export const startRappiWebhooks = async (): Promise<void> => {
+  // Start webhook server asynchronously
+  await startWebhookServer();
+  
   // Register IPC handlers
   ipcMain.handle('rappi:authenticate', async () => {
     try {

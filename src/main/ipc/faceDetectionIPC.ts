@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron';
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
 import { app } from 'electron';
 import { Canvas, Image, loadImage } from 'canvas';
 

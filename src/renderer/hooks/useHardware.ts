@@ -7,7 +7,9 @@ export enum HardwareChannel {
   VERIFY_AGE = 'hardware:verify-age',
   ERROR = 'hardware:error',
   PRODUCT_DISPENSED = 'hardware:product-dispensed',
+  ARDUINO_STATUS_UPDATE = 'hardware:arduino-status-update',
   SENSOR_STATUS = 'hardware:sensor-status',
+  TEMPERATURE_UPDATE = 'temperature:update', // 🌡️ AGREGAR CANAL DE TEMPERATURA
   IZIPAY_LOGIN = 'izipay:login',
   IZIPAY_TRANSACTION = 'izipay:process-transaction',
   IZIPAY_TEST_PORT = 'izipay:test-port',
@@ -95,6 +97,7 @@ export const useHardware = () => {
   const [bridgeAvailable, setBridgeAvailable] = useState<boolean>(false);
   const [productDispensed, setProductDispensed] = useState<boolean>(false);
   const [sensorActivated, setSensorActivated] = useState<boolean | null>(null);
+  const [temperature, setTemperature] = useState<number | null>(null); // 🌡️ NUEVO ESTADO
 
   // Initialize IPC on mount
   useEffect(() => {
@@ -161,11 +164,25 @@ export const useHardware = () => {
         setSensorActivated(result.success);
       };
 
+      const arduinoStatusListener = (status: 'idle' | 'motor-on' | 'sensor-on' | 'dispensed') => {
+        console.log('Arduino status update received:', status);
+        // Emitir evento personalizado para que ProductSelection pueda escucharlo
+        window.dispatchEvent(new CustomEvent('arduino-status-update', { detail: status }));
+      };
+
+      // 🌡️ TEMPERATURE LISTENER
+      const temperatureListener = (temperature: number) => {
+        console.log(`[HARDWARE HOOK] 🌡️ Temperature update received: ${temperature}°C`);
+        setTemperature(temperature);
+      };
+
       console.log('Setting up IPC listeners');
       const unsubscribeStatus = ipcRenderer.on(HardwareChannel.STATUS, statusListener);
       const unsubscribeError = ipcRenderer.on(HardwareChannel.ERROR, errorListener);
       const unsubscribeProductDispensed = ipcRenderer.on(HardwareChannel.PRODUCT_DISPENSED, productDispensedListener);
       const unsubscribeSensorStatus = ipcRenderer.on(HardwareChannel.SENSOR_STATUS, sensorStatusListener);
+      const unsubscribeArduinoStatus = ipcRenderer.on(HardwareChannel.ARDUINO_STATUS_UPDATE, arduinoStatusListener);
+      const unsubscribeTemperature = ipcRenderer.on(HardwareChannel.TEMPERATURE_UPDATE, temperatureListener);
 
       return () => {
         console.log('Cleaning up IPC listeners');
@@ -174,6 +191,8 @@ export const useHardware = () => {
           if (unsubscribeError) unsubscribeError();
           if (unsubscribeProductDispensed) unsubscribeProductDispensed();
           if (unsubscribeSensorStatus) unsubscribeSensorStatus();
+          if (unsubscribeArduinoStatus) unsubscribeArduinoStatus();
+          if (unsubscribeTemperature) unsubscribeTemperature(); // ️ NUEVA LIMPIEZA
         }
       };
     } else {
@@ -399,6 +418,7 @@ export const useHardware = () => {
     ageVerificationResult,
     productDispensed,
     sensorActivated,
+    temperature, // 🌡️ NUEVA PROPIEDAD
     initialize,
     dispenseProduct,
     verifyAge,

@@ -18,6 +18,8 @@ export enum HardwareChannel {
   AGE_VERIFICATION_RESULT = 'hardware:age-verification-result',
   PAYMENT_STATUS_UPDATE = 'hardware:payment-status-update',
   PRODUCT_DISPENSED = 'hardware:product-dispensed',
+  ARDUINO_STATUS_UPDATE = 'hardware:arduino-status-update',
+  TEMPERATURE_UPDATE = 'temperature:update', // 🌡️ AGREGAR CANAL DE TEMPERATURA
   HARDWARE_ERROR = 'hardware:error'
 }
 
@@ -39,9 +41,21 @@ export function registerHardwareIPC(mainWindow: Electron.BrowserWindow): void {
     mainWindow.webContents.send(HardwareChannel.PRODUCT_DISPENSED, result);
   });
   
+  hardwareService.on(HardwareEvent.ARDUINO_STATUS_UPDATE, (status: 'idle' | 'motor-on' | 'sensor-on' | 'dispensed') => {
+    mainWindow.webContents.send(HardwareChannel.ARDUINO_STATUS_UPDATE, status);
+  });
+  
+  // 🌡️ FORWARD TEMPERATURE UPDATES TO RENDERER
+  hardwareService.on(HardwareEvent.TEMPERATURE_UPDATE, (temperature: number) => {
+    console.log(`[HARDWARE IPC] ️ Forwarding temperature update to renderer: ${temperature}°C`);
+    mainWindow.webContents.send(HardwareChannel.TEMPERATURE_UPDATE, temperature);
+  });
+  
   hardwareService.on(HardwareEvent.ERROR, (error: any) => {
     mainWindow.webContents.send(HardwareChannel.HARDWARE_ERROR, error);
   });
+  
+
   
   // Register IPC handlers for renderer to main process communication
   

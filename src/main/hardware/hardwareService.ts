@@ -10,10 +10,13 @@ import {
  * Hardware service events
  */
 export enum HardwareEvent {
-  AGE_VERIFICATION_RESULT = 'age-verification-result',
-  PAYMENT_STATUS = 'payment-status',
+  ARDUINO_CONNECTED = 'arduino-connected',
+  ARDUINO_DISCONNECTED = 'arduino-disconnected',
   PRODUCT_DISPENSED = 'product-dispensed',
+  ARDUINO_STATUS_UPDATE = 'hardware:arduino-status-update',
   SENSOR_STATUS = 'sensor-status',
+  TEMPERATURE_UPDATE = 'temperature:update', //️ CORREGIR: usar dos puntos como los otros archivos
+  AGE_VERIFICATION_RESULT = 'age-verification-result', // 🔍 AGREGAR: evento faltante
   ERROR = 'error'
 }
 /**
@@ -63,9 +66,31 @@ export class HardwareService extends EventEmitter {
       console.log('Arduino data:', data);
     });
     
+    // 🌡️ TEMPERATURE MONITORING
+    this.arduino.on('temperatureUpdate', (temperature: number) => {
+      console.log(`[HARDWARE] 🌡️ Temperature update: ${temperature}°C`);
+      this.emit(HardwareEvent.TEMPERATURE_UPDATE, temperature);
+    });
+    
     // Listen for specific events from the Arduino controller
+    this.arduino.on('motorCommandReceived', () => {
+      console.log('[HARDWARE] 🚀 Motor command received from Arduino - Emitiendo ARDUINO_STATUS_UPDATE: motor-on');
+      this.emit(HardwareEvent.ARDUINO_STATUS_UPDATE, 'motor-on');
+    });
+    
+    // Reset status to idle when starting a new dispense
+    this.arduino.on('initCommandReceived', () => {
+      console.log('[HARDWARE] Init command received from Arduino');
+      this.emit(HardwareEvent.ARDUINO_STATUS_UPDATE, 'idle');
+    });
+    
     this.arduino.on('sensorActivated', (activated: boolean) => {
       console.log(`[HARDWARE] Sensor ${activated ? 'activated' : 'failed to activate'} - product ${activated ? 'dropped' : 'not detected'}`);
+      
+      if (activated) {
+        console.log('[HARDWARE] 🚀 Sensor activated - Emitiendo ARDUINO_STATUS_UPDATE: sensor-on');
+        this.emit(HardwareEvent.ARDUINO_STATUS_UPDATE, 'sensor-on');
+      }
       
       // Emit sensor status event
       this.emit(HardwareEvent.SENSOR_STATUS, {
@@ -76,9 +101,23 @@ export class HardwareService extends EventEmitter {
     });
     
     this.arduino.on('productDispensed', () => {
-      console.log('[HARDWARE] Product dispensed event received from Arduino');
-      // The slotId is stored in the result from the dispenseProduct method
+      console.log('[HARDWARE] 🚀 Product dispensed event received from Arduino - Emitiendo ARDUINO_STATUS_UPDATE: dispensed');
+      this.emit(HardwareEvent.ARDUINO_STATUS_UPDATE, 'dispensed');
+      // The slotId is stored in the result from the result from the dispenseProduct method
       // We don't emit an event here as that's handled in the dispenseProduct method
+    });
+    
+    // 🚀 CAPTURAR ERRORES DE MOTORES DEL ARDUINO (SOLO CONSOLE LOG)
+    this.arduino.on('motorError', (errorData: { type: string, message: string }) => {
+      console.error(`[HARDWARE] 🚨 MOTOR ERROR from Arduino:`, errorData);
+      
+      // Solo emitir como error general para logging
+      this.emit(HardwareEvent.ERROR, {
+        component: 'arduino-motor',
+        message: `Motor error: ${errorData.message}`,
+        timestamp: Date.now(),
+        details: errorData
+      });
     });
     
     this.arduino.on('disconnect', () => {
@@ -126,6 +165,10 @@ export class HardwareService extends EventEmitter {
         console.warn('[HARDWARE] The application will continue but dispensing functions will not work.');
       } else {
         console.log('[HARDWARE] Successfully connected to Arduino');
+        
+        // ️ INICIAR MONITOREO DE TEMPERATURA
+        console.log('[HARDWARE] Starting temperature monitoring...');
+        await this.arduino.startTemperatureMonitoring();
       }
       
       // Bypass payment processor initialization for now

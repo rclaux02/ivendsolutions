@@ -73,13 +73,13 @@ export function registerPurchaseIPC(): void {
   });
   
   // Handler for submitting feedback for a purchase
-  ipcMain.handle('purchase:submitFeedback', async (_event, data: { transactionId: number, feedbackValue: 'happy' | 'neutral' | 'sad', feedbackReason?: string }) => {
+  ipcMain.handle('purchase:submitFeedback', async (_event, data: { paymentTransactionId: string, feedbackValue: 'happy' | 'neutral' | 'sad', feedbackReason?: string }) => {
     try {
-      console.log('[PurchaseIPC] Submitting feedback for transaction:', data.transactionId);
+      console.log('[PurchaseIPC] Submitting feedback for payment transaction:', data.paymentTransactionId);
       
       const result = await withTransaction(async (connection) => {
         const success = await updatePurchaseTransactionFeedback(connection, {
-          transactionId: data.transactionId,
+          paymentTransactionId: data.paymentTransactionId,
           feedbackValue: data.feedbackValue,
           feedbackReason: data.feedbackReason
         });
@@ -87,10 +87,10 @@ export function registerPurchaseIPC(): void {
       });
       
       if (result) {
-        console.log(`[PurchaseIPC] Successfully submitted feedback for transaction ID: ${data.transactionId}`);
+        console.log(`[PurchaseIPC] Successfully submitted feedback for payment transaction ID: ${data.paymentTransactionId}`);
         return true;
       } else {
-        console.warn('[PurchaseIPC] Failed to submit feedback for transaction ID:', data.transactionId);
+        console.warn('[PurchaseIPC] Failed to submit feedback for payment transaction ID:', data.paymentTransactionId);
         // Returning false as the operation didn't update rows, maybe the ID was wrong
         return false; 
       }

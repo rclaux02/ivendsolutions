@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron';
-import { getProductsForMachine, getProductByCode, getAvailableSlotMapping, dispenseProductFromSlot } from '../database/operations/productOperations';
+import { getProductsForMachine, getProductByCode, getAllAvailableSlotMappings, dispenseProductFromSlot, getTotalProductInventory } from '../database/operations/productOperations';
 
 /**
  * Set up IPC handlers for product-related operations
@@ -42,13 +42,33 @@ export function registerProductIPC(): void {
     }
   });
 
-  // Handler for getting available slot mapping
-  ipcMain.handle('get-slot-mapping', async (_, productId: string) => {
+  // Handler for getting available slot mappings
+  ipcMain.handle('get-slot-mapping', async (_, { productId, machineCode }: { productId: string; machineCode?: string }) => {
     try {
-      const slotMapping = await getAvailableSlotMapping(productId);
-      return { success: true, data: slotMapping };
+      const currentMachineCode = machineCode || '001';
+      const slotMappings = await getAllAvailableSlotMappings(productId, currentMachineCode);
+      return { success: true, data: slotMappings };
     } catch (error) {
-      console.error('Error getting slot mapping:', error);
+      console.error('Error getting slot mappings:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error occurred' 
+      };
+    }
+  });
+
+  // Handler for getting total product inventory across all slots
+  ipcMain.handle('get-total-product-inventory', async (_, { productId, machineCode }: { productId: string; machineCode?: string }) => {
+    try {
+      const currentMachineCode = machineCode || '001';
+      console.log(`[IPC] Getting total inventory for product ${productId} in machine ${currentMachineCode}`);
+      
+      const totalInventory = await getTotalProductInventory(productId, currentMachineCode);
+      
+      console.log(`[IPC] Total inventory for product ${productId}: ${totalInventory}`);
+      return { success: true, totalInventory };
+    } catch (error) {
+      console.error('[IPC] Error getting total product inventory:', error);
       return { 
         success: false, 
         error: error instanceof Error ? error.message : 'Unknown error occurred' 
@@ -57,12 +77,15 @@ export function registerProductIPC(): void {
   });
 
   // Handler for dispensing product and updating database
-  ipcMain.handle('dispense-product-db', async (_, { productId, slotId, quantity }: { productId: string | number; slotId?: string; quantity?: number }) => {
+  ipcMain.handle('dispense-product-db', async (_, { productId, slotId, quantity, machineCode }: { productId: string | number; slotId?: string; quantity?: number; machineCode?: string }) => {
     try {
       // Convert productId to string to ensure consistency
       const productIdStr = String(productId);
       
-      console.log(`[IPC] Dispensing product - ID: ${productIdStr}, Slot: ${slotId || 'auto'}, Quantity: ${quantity || 1}`);
+      // Get machine code from parameter or use default
+      const currentMachineCode = machineCode || '001';
+      
+      console.log(`[IPC] Dispensing product - ID: ${productIdStr}, Slot: ${slotId || 'auto'}, Quantity: ${quantity || 1}, Machine: ${currentMachineCode}`);
       
       // Make sure productId is a string but not undefined
       if (!productIdStr) {
@@ -73,7 +96,7 @@ export function registerProductIPC(): void {
         };
       }
       
-      const result = await dispenseProductFromSlot(productIdStr, slotId, quantity);
+      const result = await dispenseProductFromSlot(productIdStr, slotId, quantity, currentMachineCode);
       
       console.log(`[IPC] Dispense result:`, result);
       return result;
@@ -82,6 +105,69 @@ export function registerProductIPC(): void {
       return { 
         success: false, 
         message: error instanceof Error ? error.message : 'Unknown error occurred' 
+      };
+    }
+  });
+
+
+
+  // Handler for getting filter categories by machine
+  ipcMain.handle('filters:get-categories-by-machine', async (_, { machineCode }: { machineCode: string }) => {
+    try {
+      console.log('🔄 [IPC] Getting filter categories for machine:', machineCode);
+      
+      // Importar withConnection dinámicamente para evitar problemas de import
+      const { withConnection } = require('../database/dbConnection');
+      
+      const query = `
+        SELECT DISTINCT p.FS_DES_PROD_CONT 
+        FROM TA_PRODUCTO p
+        INNER JOIN TA_PRODUCT_SLOT_MAPPING sm ON p.FS_ID = sm.PRODUCT_ID
+        WHERE sm.MACHINE_CODE = ? 
+          AND p.FS_EMP = 'Vendimedia'
+          AND p.FS_DES_PROD_CONT IS NOT NULL 
+          AND p.FS_DES_PROD_CONT != ""
+        ORDER BY p.FS_DES_PROD_CONT
+      `;
+      
+      const rows = await withConnection(async (connection: any) => {
+        const [result] = await connection.execute(query, [machineCode]);
+        return result;
+      });
+      
+      const categories = rows.map((row: any) => row.FS_DES_PROD_CONT);
+      console.log(`✅ [IPC] Found ${categories.length} categories for machine ${machineCode} with FS_EMP = 'Vendimedia':`, categories);
+      
+      return { success: true, categories };
+    } catch (error) {
+      console.error('❌ [IPC] Error getting filter categories by machine:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error getting categories' 
+      };
+    }
+  });
+
+  // Handler for direct database queries
+  ipcMain.handle('database:query', async (_, { sql }: { sql: string }) => {
+    try {
+      console.log('🔄 [IPC] Executing direct database query:', sql);
+      
+      // Importar withConnection dinámicamente para evitar problemas de import
+      const { withConnection } = require('../database/dbConnection');
+      
+      const rows = await withConnection(async (connection: any) => {
+        const [result] = await connection.execute(sql);
+        return result;
+      });
+      
+      console.log(`✅ [IPC] Query executed successfully, returned ${Array.isArray(rows) ? rows.length : 0} rows`);
+      return { success: true, rows };
+    } catch (error) {
+      console.error('❌ [IPC] Error executing database query:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error executing query' 
       };
     }
   });

@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import { AgeVerificationResult, AgeVerificationService, AgeVerificationEvent } from './ageVerification';
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 

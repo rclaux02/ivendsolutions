@@ -118,7 +118,7 @@ export async function createPurchaseItem(
 
 // Interface for feedback data
 interface PurchaseFeedbackData {
-  transactionId: number;
+  paymentTransactionId: string; // Changed from transactionId to paymentTransactionId
   feedbackValue: 'happy' | 'neutral' | 'sad';
   feedbackReason?: string | null;
 }
@@ -126,34 +126,54 @@ interface PurchaseFeedbackData {
 /**
  * Updates an existing purchase transaction with customer feedback.
  * @param connection The database connection or pool connection.
- * @param data Feedback data including transaction ID, value, and optional reason.
+ * @param data Feedback data including payment transaction ID, value, and optional reason.
  * @returns True if the update was successful, false otherwise.
  */
 export async function updatePurchaseTransactionFeedback(
   connection: PoolConnection,
   data: PurchaseFeedbackData
 ): Promise<boolean> {
+  console.log(`[PurchaseOperations] DEBUG: Attempting to update feedback with data:`, {
+    paymentTransactionId: data.paymentTransactionId,
+    feedbackValue: data.feedbackValue,
+    feedbackReason: data.feedbackReason,
+    dataType: typeof data.paymentTransactionId
+  });
+
   const query = `
     UPDATE TA_PURCHASE_TRANSACTION
     SET 
       FS_FEEDBACK_VALUE = ?,
       FT_FEEDBACK_REASON = ?
-    WHERE FI_TRANSACTION_ID = ?
+    WHERE FS_PAYMENT_TRANSACTION_ID = ?
   `;
 
   const params = [
     data.feedbackValue,
     data.feedbackReason ?? null, // Ensure null is sent if reason is undefined or null
-    data.transactionId
+    data.paymentTransactionId
   ];
+
+  console.log(`[PurchaseOperations] DEBUG: SQL Query:`, query);
+  console.log(`[PurchaseOperations] DEBUG: SQL Parameters:`, params);
 
   try {
     const [result] = await connection.execute(query, params);
+    console.log(`[PurchaseOperations] DEBUG: SQL Result:`, result);
+    
     if ((result as any).affectedRows > 0) {
-      console.log(`[PurchaseOperations] Updated feedback for transaction ID: ${data.transactionId}`);
+      console.log(`[PurchaseOperations] Successfully updated feedback for payment transaction ID: ${data.paymentTransactionId}`);
       return true;
     } 
-    console.warn(`[PurchaseOperations] No transaction found with ID: ${data.transactionId} to update feedback.`);
+    
+    console.warn(`[PurchaseOperations] No transaction found with payment ID: ${data.paymentTransactionId} to update feedback.`);
+    
+    // Let's check what transactions exist in the database
+    const [checkResult] = await connection.execute(
+      'SELECT FS_PAYMENT_TRANSACTION_ID, FS_FEEDBACK_VALUE FROM TA_PURCHASE_TRANSACTION LIMIT 5'
+    );
+    console.log(`[PurchaseOperations] DEBUG: Sample transactions in DB:`, checkResult);
+    
     return false;
   } catch (error) {
     console.error('[PurchaseOperations] Error executing updatePurchaseTransactionFeedback:', error);

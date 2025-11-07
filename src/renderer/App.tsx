@@ -6,12 +6,15 @@ import SplashScreen from './components/SplashScreen';
 import { useInactivityTimer } from './hooks/useInactivityTimer';
 import ViewportScaler from './components/ViewportScaler';
 import { ProductsProvider } from './hooks/useProductsContext';
+import LicenseModal from './components/LicenseModal';
 
 // Define the shape of the context
 interface AppNavigationContextType {
   currentScreen: Screen;
   navigateTo: (screen: Screen) => void;
   resetToSplashScreen: () => void;
+  isTimerPaused: boolean;
+  setIsTimerPaused: (paused: boolean) => void;
 }
 
 // Create the context
@@ -20,6 +23,8 @@ export const AppNavigationContext = React.createContext<AppNavigationContextType
     currentScreen: 'splash',
     navigateTo: () => {},
     resetToSplashScreen: () => {},
+    isTimerPaused: false,
+    setIsTimerPaused: () => {},
   }
 );
 
@@ -31,6 +36,7 @@ const AppContent: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>('splash');
   const [isTransitioning, setIsTransitioning] = useState(false);
   const { clearCart } = useCart();
+  const [showLicenseModal, setShowLicenseModal] = useState(false);
 
   const navigateTo = useCallback((screen: Screen) => {
     setCurrentScreen(screen);
@@ -52,13 +58,26 @@ const AppContent: React.FC = () => {
     }
   }, [currentScreen]);
 
+  useEffect(() => {
+    const code = localStorage.getItem('FS_COD_MAQ');
+    if (!code) setShowLicenseModal(true);
+  }, []);
+
+  const handleLicenseSuccess = (code: string) => {
+    localStorage.setItem('FS_COD_MAQ', code);
+    setShowLicenseModal(false);
+  };
+
   // --- Inactivity Timer --- 
-  const INACTIVITY_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes
+  const INACTIVITY_TIMEOUT_MS = 30 * 1000; // 30 seconds
+
+  // State to control if timer should be paused (e.g., during payment)
+  const [isTimerPaused, setIsTimerPaused] = useState(false);
 
   useInactivityTimer(
     INACTIVITY_TIMEOUT_MS,
     resetToSplashScreen,
-    currentScreen !== 'splash'
+    currentScreen !== 'splash' && !isTimerPaused
   );
   // --- End Inactivity Timer ---
 
@@ -95,6 +114,8 @@ const AppContent: React.FC = () => {
     currentScreen,
     navigateTo,
     resetToSplashScreen,
+    isTimerPaused,
+    setIsTimerPaused,
   };
 
   return (
@@ -102,6 +123,34 @@ const AppContent: React.FC = () => {
       {/* <ViewportScaler> */}
         <div className="app-container h-screen w-screen">
           {renderScreen()}
+          <LicenseModal isOpen={showLicenseModal} onSuccess={handleLicenseSuccess} />
+          {process.env.NODE_ENV === 'development' && (
+            <button
+              style={{
+                position: 'fixed',
+                bottom: 24,
+                right: 24,
+                zIndex: 3000,
+                background: '#FF4747',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 8,
+                padding: '0.75rem 1.5rem',
+                fontWeight: 700,
+                fontSize: 16,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                cursor: 'pointer',
+                opacity: 0.85
+              }}
+              onClick={() => {
+                localStorage.removeItem('FS_COD_MAQ');
+                window.location.reload();
+              }}
+              title="Borrar licencia (solo desarrollo)"
+            >
+              Borrar Licencia
+            </button>
+          )}
         </div>
       {/* </ViewportScaler> */}
     </AppNavigationContext.Provider>

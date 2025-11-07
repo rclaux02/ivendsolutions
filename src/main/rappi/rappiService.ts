@@ -31,8 +31,8 @@ const RAPPI_API_URLS = {
 // const RAPPI_BASE_URL = 'https://services.rappi.cl/api/open-api';
 
 // Tests Peru
-const RAPPI_CLIENT_ID = 'ugRKsfn27Au5jEmkcaIDrbDFHlkderHv';
-const RAPPI_CLIENT_SECRET = 'cgAC7VMO6--j6qj-WLxPO9a1MGVVEQcwYiniPDnwoLP-3WOEnzfM0NKB0b-BD-cP';
+const RAPPI_CLIENT_ID = '7QX2s459mffWRUhbbGhgXn1TrzIwjKE1';
+const RAPPI_CLIENT_SECRET = 'Wui1NCI2BkbLzrDMu1Qq0MD4aO3HEq0377IzVIx83f1s2vptQ5LGMrzxQQBN4AxG';
 const RAPPI_BASE_URL = 'https://services.rappi.pe/api/open-api';
 const RAPPI_STORE_ID_TEST = 59434; // store id real de Vapebox Rappi Peru
 
@@ -709,8 +709,8 @@ export class RappiService extends EventEmitter {
 
 // Default configuration with actual client credentials
 const defaultConfig: RappiServiceConfig = {
-  clientId: 'ugRKsfn27Au5jEmkcaIDrbDFHlkderHv',
-  clientSecret: 'cgAC7VMO6--j6qj-WLxPO9a1MGVVEQcwYiniPDnwoLP-3WOEnzfM0NKB0b-BD-cP',
+  clientId: '7QX2s459mffWRUhbbGhgXn1TrzIwjKE1',
+  clientSecret: 'Wui1NCI2BkbLzrDMu1Qq0MD4aO3HEq0377IzVIx83f1s2vptQ5LGMrzxQQBN4AxG',
   storeId: '59434',
   retailerId: '4386',
   environment: RappiEnvironment.PRODUCTION

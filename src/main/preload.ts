@@ -48,7 +48,14 @@ const validInvokeChannels = [
   // --- Add new purchase channels ---
   'purchase:createTransaction',
   'purchase:createItem',
-  'purchase:submitFeedback'
+  'purchase:submitFeedback',
+  'license:validate', // <-- Permitir canal de validación de licencia
+  // --- Add splash screen channels ---
+  'splash:getActive',
+  'splash:refresh',
+  'splash:create',
+  'splash:updateStatus',
+  'splash:getAll'
   // --- End of new channels ---
 ];
 
@@ -56,7 +63,12 @@ const validListenChannels = [
   'verification-success',
   'verification-failure',
   'hardware:status',
-  'hardware:error'
+  'hardware:error',
+  'temperature:update',
+  // Hardware event channels for real-time updates
+  'hardware:product-dispensed',
+  'hardware:sensor-status',
+  'hardware:arduino-status-update'
 ];
 
 // Log that preload is running
@@ -109,6 +121,26 @@ contextBridge.exposeInMainWorld('electron', {
       }
     }
   }
+});
+
+// Logger IPC
+contextBridge.exposeInMainWorld('logger', {
+  getLogDir: () => ipcRenderer.invoke('logger:getLogDir'),
+  getCurrentLogFile: () => ipcRenderer.invoke('logger:getCurrentLogFile'),
+  getLogFiles: () => ipcRenderer.invoke('logger:getLogFiles'),
+  readLogFile: (filename: string) => ipcRenderer.invoke('logger:readLogFile', filename),
+  flush: () => ipcRenderer.invoke('logger:flush'),
+  log: (level: string, message: string, component?: string, data?: any) => 
+    ipcRenderer.invoke('logger:log', level, message, component, data)
+});
+
+// Splash Screen IPC
+contextBridge.exposeInMainWorld('splashScreen', {
+  getActive: (machineCode: string, sede: string, local: string) => ipcRenderer.invoke('splash:getActive', machineCode, sede, local),
+  refresh: (sede: string, local: string) => ipcRenderer.invoke('splash:refresh', sede, local),
+  create: (data: any) => ipcRenderer.invoke('splash:create', data),
+  updateStatus: (id: number, status: string) => ipcRenderer.invoke('splash:updateStatus', id, status),
+  getAll: () => ipcRenderer.invoke('splash:getAll')
 });
 
 // console.log('Preload script completed, electron bridge exposed'); 

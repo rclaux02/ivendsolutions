@@ -124,7 +124,8 @@ export class IzipayService {
       );
 
       console.log('[IZIPAY] Transaction processed successfully');
-      console.log('[IZIPAY] Response:', response);
+      console.log('[IZIPAY] Response data:', response.data);
+      console.log('[IZIPAY] Response status:', response.status);
       
       // Check for PINPAD connection error
       if (response.data.response_code === '99' && 

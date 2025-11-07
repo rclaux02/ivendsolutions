@@ -117,7 +117,7 @@ const DocumentScanModal: React.FC<DocumentScanModalProps> = ({
   // State for current step
   const [currentStep, setCurrentStep] = useState<'scanning' | 'failure' | 'success'>('scanning');
   // State for countdown timer
-  const [timeLeft, setTimeLeft] = useState(59);
+  const [timeLeft, setTimeLeft] = useState(30);
   const [regulaInitialized, setRegulaInitialized] = useState(false);
   // State for scanning status message
   const [scanningStatus, setScanningStatus] = useState('ESCANEA TU DOCUMENTO\nEN EL LECTOR');

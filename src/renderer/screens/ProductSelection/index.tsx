@@ -16,10 +16,14 @@ import RappiModal from '../../components/RappiModal';
 import DocumentScanModal from '../../components/DocumentScanModal';
 import { useHardware, HardwareStatus } from '@/renderer/hooks/useHardware';
 import { IzipayTestModal } from '../../components/IzipayTestModal';
-import { getAvailableSlotMapping, dispenseProductFromSlot } from '@/main/database/operations/productOperations';
+import { getAllAvailableSlotMappings, dispenseProductFromSlot } from '@/main/database/operations/productOperations';
 import { useProductOperations } from '@/renderer/hooks/useProductOperations';
 import TestDispenseModal from '../../components/TestDispenseModal';
 import SuccessModal from '@/renderer/components/SuccessModal';
+import ErrorModal from '../../components/ErrorModal';
+import FeedbackThankYouModal from '../../components/FeedbackThankYouModal';
+import FeedbackDetailModal from '../../components/FeedbackDetailModal';
+import { features } from '@/config/featureFlags';
 
 // Import your banner images
 import banner1 from '@/renderer/assets/banners/horizontalBanner_1.jpg';
@@ -40,34 +44,36 @@ const extractPuffCount = (name: string): number => {
   return 0;
 };
 
-// Define filter categories for display in the UI - but with dynamic brands to be populated later
+// Define filter categories structure - categories are hardcoded, brands are dynamic
 const filterCategoriesData = [
   {
-    name: 'Marcas',
-    options: [] // Will be populated dynamically from the database
+    name: 'Categoria',
+    options: [
+      { id: 'Bebidas', label: 'Bebidas' },
+      { id: 'Caramelos', label: 'Caramelos' },
+      { id: 'Chocolates', label: 'Chocolates' },
+      { id: 'Cigarros', label: 'Cigarros' },
+      { id: 'Galletas', label: 'Galletas' },
+      { id: 'Snacks', label: 'Snacks' },
+    ]
   },
   {
-    name: 'Puffs',
-    options: [
-      { id: '40000+', label: '40,000+' },
-      { id: '30000-40000', label: '30,000 - 40,000' },
-      { id: '20000-30000', label: '20,000 - 30,000' },
-      { id: '10000-20000', label: '10,000 - 20,000' },
-      { id: '1000-10000', label: '1,000 - 10,000' },
-    ],
+    name: 'Marca',
+    options: [] // Will be populated dynamically from database
   },
   {
     name: 'Precio',
     options: [
-      { id: '150+', label: '150+ soles' },
-      { id: '100-150', label: '100 - 150 soles' },
-      { id: '50-100', label: '50 - 100 soles' },
-      { id: '0-50', label: '0 - 50 soles' },
+      { id: '0-2', label: '0 - 2 soles' },
+      { id: '2-5', label: '2 - 5 soles' },
+      { id: '5-10', label: '5 - 10 soles' },
+      { id: '10+', label: '10+ soles' },
     ],
   },
 ];
 
 const ProductSelection: React.FC = () => {
+  // console.log('Renderizando ProductSelection'); // ❌ ELIMINADO: Causaba re-renders infinitos
   const { cart, clearCart, removeFromCart, updateQuantity, closeCart, checkout, addToCart, getCartItemQuantity } = useCart();
   const { 
     isInitialized, 
@@ -78,6 +84,7 @@ const ProductSelection: React.FC = () => {
     sensorActivated,
     resetProductDispensed,
     resetSensorActivated,
+    temperature,
     error: hardwareError,
     bridgeAvailable
   } = useHardware();
@@ -98,10 +105,128 @@ const ProductSelection: React.FC = () => {
   const [isDocumentScanModalOpen, setIsDocumentScanModalOpen] = useState(false);
   const [capturedFaceImage, setCapturedFaceImage] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showSimulationModal, setShowSimulationModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
+  const [showFeedbackThankYou, setShowFeedbackThankYou] = useState(false);
+  const [showFeedbackDetail, setShowFeedbackDetail] = useState(false);
+  
+  // Estado para almacenar el payment transaction ID
+  const [paymentTransactionId, setPaymentTransactionId] = useState<string | null>(null);
+  
+  // 🔍 AGREGAR: Estado para almacenar el feedback
+  const [lastFeedbackType, setLastFeedbackType] = useState<'happy' | 'neutral' | 'sad' | null>(null);
+  const [lastFeedbackReason, setLastFeedbackReason] = useState<string | null>(null);
+  
+  // Estado para sincronización con el modal de dispensado para múltiples productos
+  const [dispensingState, setDispensingState] = useState({
+    totalProducts: 1,
+    currentProductIndex: 1,
+    currentProductName: ''
+  });
+  
+  // Estado para sincronización con el Arduino
+  const [arduinoStatus, setArduinoStatus] = useState<'idle' | 'motor-on' | 'sensor-on' | 'dispensed'>('idle');
+  
+  // Estado para controlar el dispensado basado en Arduino
+  const [isWaitingForArduino, setIsWaitingForArduino] = useState(false);
+  const [currentDispensingProduct, setCurrentDispensingProduct] = useState<{
+    item: any;
+    slotId: string;
+    slotQuantity: number;
+    unitsDispensedSoFar: number;
+  } | null>(null);
+  
+  // Listener para eventos del Arduino
+  useEffect(() => {
+    const handleArduinoStatusUpdate = (event: CustomEvent) => {
+      console.log('[ProductSelection] 🚀 Arduino status update recibido:', event.detail);
+      setArduinoStatus(event.detail);
+      
+      // 🚀 NUEVA INTEGRACIÓN: Responder a STPOK del Arduino con delay para mostrar éxito
+      if (event.detail === 'dispensed' && isWaitingForArduino && currentDispensingProduct) {
+        console.log('[ProductSelection] 🎯 Arduino confirmó producto dispensado - mostrando éxito primero');
+        
+        // Calcular nuevo índice
+        const newUnitsDispensed = currentDispensingProduct.unitsDispensedSoFar + 1;
+        
+        // Si completamos todas las unidades de este producto
+        if (newUnitsDispensed >= currentDispensingProduct.slotQuantity) {
+          console.log('[ProductSelection] ✅ Producto completado - actualizando índice después de mostrar éxito');
+          
+          // Actualizar índice después de un delay para que se vea el mensaje de éxito
+          setTimeout(() => {
+            console.log(`[ProductSelection] 🔄 Actualizando índice a ${newUnitsDispensed} de ${totalProductUnits}`);
+            setDispensingState(prev => ({
+              ...prev,
+              currentProductIndex: newUnitsDispensed,
+              currentProductName: currentDispensingProduct.item.product.FS_SABOR || currentDispensingProduct.item.product.name
+            }));
+            
+            // Resetear Arduino DESPUÉS de actualizar el índice
+            setTimeout(() => {
+              console.log('[ProductSelection] 🔄 Reseteando Arduino después de actualizar índice');
+              setArduinoStatus('idle');
+              setIsWaitingForArduino(false);
+              setCurrentDispensingProduct(null);
+            }, 100); // 100ms después de actualizar el índice
+          }, 300); // 0.3 segundos para mostrar "¡Producto dispensado exitosamente!"
+          
+        } else {
+          // Continuar con la siguiente unidad del mismo producto
+          setCurrentDispensingProduct(prev => prev ? {
+            ...prev,
+            unitsDispensedSoFar: newUnitsDispensed
+          } : null);
+          
+          // Actualizar índice inmediatamente para unidades del mismo producto
+          setDispensingState(prev => ({
+            ...prev,
+            currentProductIndex: newUnitsDispensed,
+            currentProductName: currentDispensingProduct.item.product.FS_SABOR || currentDispensingProduct.item.product.name
+          }));
+        }
+      }
+    };
+
+    window.addEventListener('arduino-status-update', handleArduinoStatusUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('arduino-status-update', handleArduinoStatusUpdate as EventListener);
+    };
+  }, [isWaitingForArduino, currentDispensingProduct]);
+  
+  // Reset Arduino status when starting dispensing or changing products
+  useEffect(() => {
+    if (showSuccessModal) {
+      console.log('[ProductSelection] 🔍 DIAGNÓSTICO - SuccessModal abierto:', {
+        currentProductIndex: dispensingState.currentProductIndex,
+        totalProducts: dispensingState.totalProducts
+      });
+      
+      // Reset Arduino status when starting dispensing
+      if (dispensingState.currentProductIndex === 1) {
+        setArduinoStatus('idle');
+      }
+      // Reset Arduino status when moving to next product
+      else if (dispensingState.currentProductIndex > 1) {
+        setArduinoStatus('idle');
+      }
+    }
+  }, [showSuccessModal, dispensingState.currentProductIndex, dispensingState.totalProducts]);
+  
+
+  
+  // Callback para cambiar el estado del Arduino (envuelto en useCallback para evitar re-renders)
+  const handleArduinoStatusChange = useCallback((status: 'idle' | 'motor-on' | 'sensor-on' | 'dispensed') => {
+    console.log('[ProductSelection] 🔄 Cambiando estado del Arduino a:', status);
+    setArduinoStatus(status);
+  }, []);
   
   // Use the filter categories data with state to support updates
   const [filterCategories, setFilterCategories] = useState(filterCategoriesData);
+  
+  // Debug log to see current filterCategories state
+  console.log('[FILTER DEBUG] Current filterCategories state:', filterCategories);
   
   // Initialize active filters based on filter categories
   const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>(() => {
@@ -112,54 +237,68 @@ const ProductSelection: React.FC = () => {
     return initialFilters;
   });
 
-  // New effect to extract unique brands from products and update filter options
+  // Clean invalid filters on component mount
+  useEffect(() => {
+    const cleanedFilters = cleanInvalidFilters(activeFilters, filterCategories);
+    if (JSON.stringify(cleanedFilters) !== JSON.stringify(activeFilters)) {
+      setActiveFilters(cleanedFilters);
+    }
+  }, [filterCategories]);
+
+
+
+  // Effect to extract unique brands from products and update filter options
   useEffect(() => {
     if (dbProducts && dbProducts.length > 0) {
-      // Extract unique brands from products
+      console.log('[FILTER DEBUG] Total products loaded:', dbProducts.length);
+      
+      // 🔍 DEBUG: Verificar valores de descuento (temporal)
+      const productsWithDiscount = dbProducts.filter(p => {
+        if (!p.discount) return false;
+        const cleanDiscount = p.discount.toString().replace('%', '');
+        return !isNaN(Number(cleanDiscount)) && Number(cleanDiscount) > 0;
+      });
+      console.log('[DISCOUNT DEBUG] Productos con descuento válido:', productsWithDiscount.length);
+      
+      // Extract unique brands from products using brand field (FS_MARCA)
       const uniqueBrands = Array.from(new Set(
         dbProducts
           .map(product => product.brand)
-          .filter(brand => brand) // Filter out null/undefined
+          .filter(brand => brand && brand !== 'Unknown') // Filter out null/undefined/Unknown
       )).sort(); // Sort alphabetically
 
-      // Create new filter options for brands
+      console.log('[FILTER DEBUG] Unique brands found:', uniqueBrands);
+
+      // Create filter options for brands
       const brandOptions = uniqueBrands.map(brand => ({
-        id: brand,
-        label: brand
-      }));
+        id: brand || '',
+        label: brand || ''
+      })).filter(option => option.id !== '');
 
-      // Update the filter categories with dynamic brand options
-      setFilterCategories(prevCategories => {
-        // Create a new array to avoid modifying the original
-        const updatedCategories = [...prevCategories];
-        
-        // Find the index of the "Marcas" category
-        const brandCategoryIndex = updatedCategories.findIndex(category => category.name === 'Marcas');
-        
-        // If found, update its options
-        if (brandCategoryIndex !== -1) {
-          updatedCategories[brandCategoryIndex] = {
-            ...updatedCategories[brandCategoryIndex],
-            options: brandOptions
-          };
-        }
-        
-        return updatedCategories;
-      });
+      console.log('[FILTER DEBUG] Brand options created:', brandOptions);
 
-      // Apply any active filters to the new database products
-      applyFiltersToProducts(dbProducts, activeFilters);
+      // Update only the brand filter options, keep categories hardcoded
+      setFilterCategories(prevCategories => 
+        prevCategories.map(category => 
+          category.name === 'Marca' 
+            ? { ...category, options: brandOptions }
+            : category
+        )
+      );
     }
   }, [dbProducts]);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentBanner((prev) => (prev + 1) % banners.length);
-    }, 8000); // Change banner every 8 seconds
-    //implement videos as well 
-
-    return () => clearInterval(interval);
-  }, []);
+  // Function to clean invalid filters
+  const cleanInvalidFilters = (filters: Record<string, string[]>, categories: any[]) => {
+    const cleaned: Record<string, string[]> = {};
+    categories.forEach(category => {
+      const categoryFilters = filters[category.name] || [];
+      const validOptions = category.options.map((opt: any) => opt.id);
+      cleaned[category.name] = categoryFilters.filter(filter => validOptions.includes(filter));
+    });
+    
+    return cleaned;
+  };
 
   const handleProductSelect = (product: Product) => {
     // Clear any existing stock error message when a new product is selected
@@ -180,48 +319,33 @@ const ProductSelection: React.FC = () => {
   const applyFiltersToProducts = (productsToFilter: Product[], selectedFilters: Record<string, string[]>) => {
     let filtered = [...productsToFilter];
     
-    // Apply brand filter
-    if (selectedFilters.Marcas && selectedFilters.Marcas.length > 0) {
+    // Filtro por categoría usando FS_DES_PROD_CONT
+    if (selectedFilters.Categoria && selectedFilters.Categoria.length > 0) {
       filtered = filtered.filter(product => 
-        selectedFilters.Marcas.includes(product.brand)
+        product.FS_DES_PROD_CONT && selectedFilters.Categoria.includes(product.FS_DES_PROD_CONT)
+      );
+    }
+
+    // Filtro por marca usando FS_MARCA
+    if (selectedFilters.Marca && selectedFilters.Marca.length > 0) {
+      filtered = filtered.filter(product => 
+        product.brand && selectedFilters.Marca.includes(product.brand)
       );
     }
     
-    // Apply puff filter
-    if (selectedFilters.Puffs && selectedFilters.Puffs.length > 0) {
-      filtered = filtered.filter(product => {
-        // Convert filter options to numbers for comparison
-        const puffRanges = selectedFilters.Puffs.map(filter => {
-          if (filter === "1000-10000") return [1000, 10000];
-          if (filter === "10000-20000") return [10000, 20000];
-          if (filter === "20000-30000") return [20000, 30000];
-          if (filter === "30000-40000") return [30000, 40000];
-          if (filter === "40000+") return [40000, Infinity];
-          return [0, 0]; // Invalid range
-        });
-        
-        // Check if product's puff count falls within any of the selected ranges
-        return puffRanges.some(([min, max]) => 
-          product.puffs >= min && product.puffs <= max
-        );
-      });
-    }
-    
-    // Apply price filter
+    // Filtro por precio usando FN_PREC_VTA (price field)
     if (selectedFilters.Precio && selectedFilters.Precio.length > 0) {
       filtered = filtered.filter(product => {
-        // Convert filter options to numbers for comparison
+        const price = parseFloat(product.price as any);
         const priceRanges = selectedFilters.Precio.map(filter => {
-          if (filter === "0-50") return [0, 50];
-          if (filter === "50-100") return [50, 100];
-          if (filter === "100-150") return [100, 150];
-          if (filter === "150+") return [150, Infinity];
-          return [0, 0]; // Invalid range
+          if (filter === "0-2") return [0, 2];
+          if (filter === "2-5") return [2, 5];
+          if (filter === "5-10") return [5, 10];
+          if (filter === "10+") return [10.01, Infinity];
+          return [0, 0];
         });
-        
-        // Check if product's price falls within any of the selected ranges
         return priceRanges.some(([min, max]) => 
-          product.price >= min && product.price <= max
+          price >= min && price <= max
         );
       });
     }
@@ -251,8 +375,15 @@ const ProductSelection: React.FC = () => {
       return numericPrice;
     }
     
-    // Convert string discount to number if needed
-    const discountValue = typeof discount === 'string' ? parseFloat(discount) : discount;
+    // Convert string discount to number if needed, removing % symbol if present
+    let discountValue: number;
+    if (typeof discount === 'string') {
+      // Remove % symbol and convert to number
+      const cleanDiscount = discount.replace('%', '');
+      discountValue = parseFloat(cleanDiscount);
+    } else {
+      discountValue = discount;
+    }
     
     // If discount is not a valid number or is zero/negative, return original price
     if (isNaN(discountValue) || discountValue <= 0) {
@@ -316,13 +447,31 @@ const ProductSelection: React.FC = () => {
     });
     
     // Open the camera modal for facial recognition
-    setIsCameraModalOpen(true);
+    if (features.facialRecognition) {
+      setIsCameraModalOpen(true);
+    } else {
+      // Guardar usuario id 0 en sessionStorage con clave FS_ID
+      window.sessionStorage.setItem('currentUser', JSON.stringify({ FS_ID: 0 }));
+      setIsPaymentModalOpen(true);
+    }
   };
 
   // Function to determine if we're in any part of the payment process
   const isInPaymentProcess = () => {
-    return isPaymentModalOpen;
+    return isPaymentModalOpen || showSuccessModal || showFeedbackDetail || showFeedbackThankYou || showErrorModal;
   };
+
+  // Banner rotation effect - only when not in payment process
+  useEffect(() => {
+    // Only run banner rotation when not in payment process
+    if (!isInPaymentProcess()) {
+      const interval = setInterval(() => {
+        setCurrentBanner((prev) => (prev + 1) % banners.length);
+      }, 8000); // Change banner every 8 seconds
+      
+      return () => clearInterval(interval);
+    }
+  }, [isPaymentModalOpen, showSuccessModal, showFeedbackDetail, showFeedbackThankYou, showErrorModal]); // ✅ Dependencias directas del estado
 
   // --- Start Memoized Handlers for CameraModal ---
   // Define handleCameraModalClose and wrap in useCallback
@@ -367,14 +516,52 @@ const ProductSelection: React.FC = () => {
 
   const handlePaymentComplete = async () => {
     try {
-      // Don't show success modal here, wait for product sensor status
+      // Ensure hardware is initialized before dispensing
+      if (!isInitialized) {
+        console.log('Hardware not initialized, initializing now...');
+        const initResult = await initialize();
+        if (!initResult) {
+          throw new Error('Failed to initialize hardware');
+        }
+      }
       
       const cartItems = cart.items;
+      
+      // Configurar estado inicial del modal de dispensado
+      const totalProductUnits = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+      setDispensingState({
+        totalProducts: totalProductUnits,
+        currentProductIndex: 1,
+        currentProductName: cartItems.length > 0 ? (cartItems[0].product.FS_SABOR || cartItems[0].product.name) : ''
+      });
+      
+      // Cerrar modal de pago
+      setIsPaymentModalOpen(false);
+      
+      // ✅ CORREGIDO: Abrir SuccessModal ANTES de empezar a dispensar para mostrar progreso
+      console.log('[ProductSelection] 🚀 Abriendo SuccessModal para mostrar progreso de dispensado');
+      setShowSuccessModal(true);
       
       // Process each type of product in the cart
       for (const item of cartItems) {
         // Make sure we're using a string product ID
         const productId = String(item.product.id);
+        
+        // Calculate how many units have been dispensed so far (from previous items)
+        let unitsDispensedSoFar = 0;
+        for (let j = 0; j < cartItems.indexOf(item); j++) {
+          unitsDispensedSoFar += cartItems[j].quantity;
+        }
+        
+        // ✅ CORREGIDO: Actualizar estado para mostrar el producto actual que se está dispensando
+        setDispensingState({
+          totalProducts: totalProductUnits,
+          currentProductIndex: unitsDispensedSoFar + 1,
+          currentProductName: item.product.FS_SABOR || item.product.name
+        });
+
+        // Pequeño delay para que el usuario vea el cambio de producto
+        await new Promise(resolve => setTimeout(resolve, 300));
         
         console.log(`------- Processing ${item.quantity} units of ${item.product.name} (ID: ${productId}) -------`);
         console.log('Product details:', {
@@ -383,95 +570,190 @@ const ProductSelection: React.FC = () => {
           name: item.product.name,
           brand: item.product.brand,
           price: item.product.price,
-          // item.product.slot_id will be used as a suggestion on the first attempt
+          // Multi-slot dispensing will automatically find the best slots
         });
         
         // Need to dispense the quantity of each product
         let remainingQuantity = item.quantity;
-        let attemptCount = 0; // Tracks attempts for THIS product item
-        const maxAttempts = 10; // Prevent infinite loops
         
-        // Track which slots we've used for this product
-        const usedSlots: Record<string, number> = {};
+        console.log(`------- Processing ${item.quantity} units of ${item.product.name} (ID: ${productId}) -------`);
+        console.log('Product details:', {
+          id: productId,
+          type: typeof productId,
+          name: item.product.name,
+          brand: item.product.brand,
+          price: item.product.price,
+          // Multi-slot dispensing will automatically find the best slots
+        });
         
-        while (remainingQuantity > 0 && attemptCount < maxAttempts) {
-          attemptCount++;
-          
-          // On the first attempt for this product, suggest the original slot_id from the cart item.
-          // On subsequent attempts (if the first slot didn't have enough), pass undefined for slotId
-          // to let the backend search all available slots for the productId.
-          const suggestedSlotIdForThisAttempt = (attemptCount === 1) ? item.product.slot_id : undefined;
-
-          console.log(`Attempt ${attemptCount} for product ${productId}: Dispensing ${remainingQuantity} remaining units. Suggested slot for this attempt: ${suggestedSlotIdForThisAttempt}`);
+        // Use multi-slot dispensing from the first attempt
+        // This will automatically find and use multiple slots if needed
+        console.log(`Attempting multi-slot dispensing for ${remainingQuantity} units of product ${productId}`);
                     
-          // Request to dispense product. The backend (dispenseProductFromSlot)
-          // will use suggestedSlotIdForThisAttempt if provided, or search all slots if it's undefined.
-          const dbResult = await dispenseProductDb(productId, suggestedSlotIdForThisAttempt, remainingQuantity);
+        // Request to dispense product using multi-slot dispensing
+        // Pass undefined as slotId to activate automatic multi-slot search
+        const dbResult = await dispenseProductDb(productId, undefined, remainingQuantity);
           
-          console.log('Database result for attempt:', dbResult);
+        console.log('Database result for multi-slot dispensing:', dbResult);
           
           if (!dbResult.success) {
-            console.error(`Failed to dispense product ${productId}:`, dbResult.message);
-            throw new Error(dbResult.message || `Failed to find available slot for product ${productId}`);
+          console.error(`Failed to dispense product ${productId} using multi-slot:`, dbResult.message);
+          throw new Error(dbResult.message || `Failed to find available slots for product ${productId}`);
           }
           
           // Get the results from the backend
-          const { slotId, quantityDispensed = 0 } = dbResult;
+        const { slotId, quantityDispensed = 0, usedSlots, isMultiSlot } = dbResult;
           
           if (!slotId) {
             console.error('No slot ID returned');
             throw new Error(`No slot ID returned for product ${productId}`);
           }
           
-          // Track which slots we've used
-          usedSlots[slotId] = (usedSlots[slotId] || 0) + quantityDispensed;
+        // Log multi-slot information if applicable
+        if (isMultiSlot && usedSlots) {
+          console.log(`Multi-slot dispensing activated: ${usedSlots.map((s: {slotId: string, quantityDispensed: number}) => `${s.slotId}(${s.quantityDispensed})`).join(', ')}`);
+        }
           
-          console.log(`Successfully found ${quantityDispensed} units in slot ${slotId}`);
+        console.log(`Successfully found ${quantityDispensed} units using ${isMultiSlot ? 'multi-slot' : 'single-slot'} dispensing`);
           
           // Dispense each unit individually
-          console.log(`Dispensing ${quantityDispensed} units from slot ${slotId} (one at a time)`);
+        console.log(`Dispensing ${quantityDispensed} units (one at a time)`);
           
           let successfulDispenses = 0;
           
-          // Loop through each unit and dispense one at a time
+        if (isMultiSlot && usedSlots) {
+          // Multi-slot dispensing: dispense from each slot individually
+          console.log(`Processing ${usedSlots.length} slots for multi-slot dispensing`);
+          
+          for (const slotInfo of usedSlots) {
+            const { slotId: currentSlotId, quantityDispensed: slotQuantity } = slotInfo;
+            console.log(`Processing slot ${currentSlotId}: ${slotQuantity} unidades`);
+            
+            // Dispense from this specific slot
+            for (let i = 0; i < slotQuantity; i++) {
+              console.log(`Dispensing unit ${i+1}/${slotQuantity} from slot ${currentSlotId}`);
+              
+              // Dispense one unit at a time, using the correct motor number
+              const dispensingResult = await dispenseProduct(currentSlotId);
+              
+              if (!dispensingResult.success) {
+                console.error(`Hardware dispense failed for unit ${i+1} from slot ${currentSlotId}:`, dispensingResult.message);
+                // Try to reinitialize hardware and retry once
+                if (i === 0) { // Only retry on first unit
+                  console.log('Attempting to reinitialize hardware and retry...');
+                  await initialize();
+                  const retryResult = await dispenseProduct(currentSlotId);
+                  if (!retryResult.success) {
+                    throw new Error(retryResult.message || `Failed to dispense unit ${i+1}/${slotQuantity} from slot ${currentSlotId} after retry`);
+                  }
+                } else {
+                  throw new Error(dispensingResult.message || `Failed to dispense unit ${i+1}/${slotQuantity} from slot ${currentSlotId}`);
+                }
+              }
+              
+              successfulDispenses++;
+              
+              // Update dispensing state to show progress through individual units
+              setDispensingState({
+                totalProducts: totalProductUnits,
+                currentProductIndex: unitsDispensedSoFar + successfulDispenses,
+                currentProductName: item.product.FS_SABOR || item.product.name
+              });
+              
+              // 🚀 CONFIGURAR ESPERA DEL ARDUINO
+              setIsWaitingForArduino(true);
+              setCurrentDispensingProduct({
+                item,
+                slotId: currentSlotId,
+                slotQuantity,
+                unitsDispensedSoFar: unitsDispensedSoFar + successfulDispenses
+              });
+              
+              // 🚀 ESPERAR RESPUESTA STPOK DEL ARDUINO (sin delay artificial)
+              console.log(`Waiting for Arduino STPOK response for unit ${i+1}/${slotQuantity} from slot ${currentSlotId}`);
+              
+              // Esperar hasta que el Arduino confirme con STPOK
+              await new Promise<void>((resolve) => {
+                const checkArduinoResponse = () => {
+                  if (!isWaitingForArduino) {
+                    console.log(`Arduino confirmed unit ${i+1}/${slotQuantity} dispensed from slot ${currentSlotId}`);
+                    resolve();
+                  } else {
+                    // Revisar cada 100ms si el Arduino ya respondió
+                    setTimeout(checkArduinoResponse, 100);
+                  }
+                };
+                checkArduinoResponse();
+              });
+              
+              console.log(`Successfully dispensed unit ${i+1}/${slotQuantity} from slot ${currentSlotId}`);
+            }
+          }
+        } else {
+          // Single slot dispensing: dispense all units from one slot
+          console.log(`Dispensing ${quantityDispensed} units from slot ${slotId} (one at a time)`);
+          
           for (let i = 0; i < quantityDispensed; i++) {
             console.log(`Dispensing unit ${i+1}/${quantityDispensed} from slot ${slotId}`);
+            
             // Dispense one unit at a time, using the correct motor number
             const dispensingResult = await dispenseProduct(slotId);
             
             if (!dispensingResult.success) {
               console.error(`Hardware dispense failed for unit ${i+1} from slot ${slotId}:`, dispensingResult.message);
-              throw new Error(dispensingResult.message || `Failed to dispense unit ${i+1}/${quantityDispensed} from slot ${slotId}`);
+              // Try to reinitialize hardware and retry once
+              if (i === 0) { // Only retry on first unit
+                console.log('Attempting to reinitialize hardware and retry...');
+                await initialize();
+                const retryResult = await dispenseProduct(slotId);
+                if (!retryResult.success) {
+                  throw new Error(retryResult.message || `Failed to dispense unit ${i+1}/${quantityDispensed} from slot ${slotId} after retry`);
+                }
+              } else {
+                throw new Error(dispensingResult.message || `Failed to dispense unit ${i+1}/${quantityDispensed} from slot ${slotId}`);
+              }
             }
             
-            successfulDispenses++;
+            // 🚀 CONFIGURAR ESPERA DEL ARDUINO
+            setIsWaitingForArduino(true);
+            setCurrentDispensingProduct({
+              item,
+              slotId,
+              slotQuantity: quantityDispensed,
+              unitsDispensedSoFar: unitsDispensedSoFar + successfulDispenses
+            });
+            
+            // 🚀 ESPERAR RESPUESTA STPOK DEL ARDUINO (sin delay artificial)
+            console.log(`Waiting for Arduino STPOK response for unit ${i+1}/${quantityDispensed} from slot ${slotId}`);
+            
+            // Esperar hasta que el Arduino confirme con STPOK
+            await new Promise<void>((resolve) => {
+              const checkArduinoResponse = () => {
+                if (!isWaitingForArduino) {
+                  console.log(`Arduino confirmed unit ${i+1}/${quantityDispensed} dispensed from slot ${slotId}`);
+                  successfulDispenses++;
+                  resolve();
+                } else {
+                  // Revisar cada 100ms si el Arduino ya respondió
+                  setTimeout(checkArduinoResponse, 100);
+                }
+              };
+              checkArduinoResponse();
+            });
+            
             console.log(`Successfully dispensed unit ${i+1}/${quantityDispensed} from slot ${slotId}`);
           }
-          
-          console.log(`Successfully dispensed all ${successfulDispenses} units from slot ${slotId}`);
-          
-          // Reduce the remaining quantity based on dispensed units
-          remainingQuantity -= successfulDispenses;
-          
-          console.log(`Remaining quantity after dispensing from slot ${slotId}: ${remainingQuantity}`);
-          
-          // If we didn't dispense anything this attempt, something is wrong
-          if (quantityDispensed === 0) {
-            console.error('Dispensed 0 quantity, might be out of stock or hardware issue');
-            throw new Error(`Could not dispense any units of product ${productId} from slot ${slotId}`);
-          }
         }
+          
+        console.log(`Successfully dispensed all ${successfulDispenses} units using ${isMultiSlot ? 'multi-slot' : 'single-slot'} dispensing`);
+          
+        // Update units dispensed so far for next product
+        unitsDispensedSoFar += successfulDispenses;
         
-        // Check if we dispensed everything
-        if (remainingQuantity > 0) {
-          console.error(`Could not dispense all requested units. ${remainingQuantity} units remaining.`);
-          throw new Error(`Could not dispense all requested units of product ${productId}. ${remainingQuantity} units remaining.`);
+        // 🚀 ARDUINO INTEGRATION: No delay needed - Arduino handles timing
+        if (cartItems.indexOf(item) < cartItems.length - 1) {
+          console.log('Arduino integration: No artificial delay needed between products');
         }
-        
-        // Log the slots we used
-        console.log(`Successfully dispensed ${item.quantity} units of ${item.product.name} from slots:`, 
-          Object.entries(usedSlots).map(([slot, qty]) => `${slot}(${qty})`).join(', ')
-        );
       }
 
       // If we get here, all products were dispensed successfully
@@ -493,25 +775,113 @@ const ProductSelection: React.FC = () => {
         // Don't throw error here - inventory generation failure shouldn't affect the purchase flow
       }
       
+      // Clear cart after successful dispensing
       clearCart();
+      
+      // ✅ CORREGIDO: Actualizar estado final para mostrar que todos los productos fueron dispensados
+      console.log('[ProductSelection] ✅ Dispensing completed successfully. Updating final state.');
+      
+      // 🚀 ARDUINO INTEGRATION: Actualizar estado final inmediatamente (sin delay artificial)
+      setDispensingState({
+        totalProducts: totalProductUnits,
+        currentProductIndex: totalProductUnits, // Todos los productos dispensados
+        currentProductName: cartItems.length > 0 ? (cartItems[cartItems.length - 1].product.FS_SABOR || cartItems[cartItems.length - 1].product.name) : ''
+      });
+      console.log('[ProductSelection] ✅ Estado final actualizado inmediatamente (Arduino integration)');
+      
+      console.log('[ProductSelection] ✅ DispensingState updated to final state:', {
+        totalProducts: totalProductUnits,
+        currentProductIndex: totalProductUnits,
+        currentProductName: cartItems.length > 0 ? (cartItems[cartItems.length - 1].product.FS_SABOR || cartItems[cartItems.length - 1].product.name) : ''
+      });
+      
+      // 🔍 DIAGNÓSTICO: Verificar que el SuccessModal esté abierto y en estado correcto
+      console.log('[ProductSelection] 🔍 DIAGNÓSTICO - Estado actual:', {
+        showSuccessModal,
+        dispensingState: {
+          totalProducts: totalProductUnits,
+          currentProductIndex: totalProductUnits,
+          currentProductName: cartItems.length > 0 ? (cartItems[cartItems.length - 1].product.FS_SABOR || cartItems[cartItems.length - 1].product.name) : ''
+        }
+      });
     } catch (error) {
       console.error('Error dispensing products:', error);
-      setError(error instanceof Error ? error.message : 'An unknown error occurred');
+      
+      // Set specific error message based on the error type
+      let errorMessage = 'Error desconocido al dispensar productos';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to initialize hardware')) {
+          errorMessage = 'Error: Hardware no disponible. Verifique la conexión del Arduino.';
+        } else if (error.message.includes('Arduino not connected')) {
+          errorMessage = 'Error: Arduino no conectado. Verifique la conexión USB.';
+        } else if (error.message.includes('Failed to find available slot')) {
+          errorMessage = 'Error: No hay productos disponibles en los slots.';
+        } else if (error.message.includes('sensor')) {
+          errorMessage = 'Error: Problema con el sensor del dispensador.';
+        } else {
+          errorMessage = `Error al dispensar: ${error.message}`;
+        }
+      }
+      
+      setError(errorMessage);
       setShowErrorModal(true);
     }
   };
 
   // Get the resetToSplashScreen function from context
-  const { resetToSplashScreen } = useContext(AppNavigationContext);
+  const { resetToSplashScreen, setIsTimerPaused } = useContext(AppNavigationContext);
   
-  // Update the handleFeedbackSubmitted function to just log the feedback
-  const handleFeedbackSubmitted = (feedback: 'happy' | 'neutral' | 'sad') => {
+  // Function to reset inactivity timer when user interacts with the product selection screen
+  const handleScreenInteraction = useCallback((event: React.MouseEvent) => {
+    // Prevent event bubbling to avoid conflicts with other click handlers
+    event.stopPropagation();
+    
+    // Dispatch a custom event that will reset the inactivity timer
+    // This ensures any click anywhere on the screen resets the timer
+    window.dispatchEvent(new Event('click'));
+    
+    // Dispatch custom event to reset PaymentModal timer if it's active
+    window.dispatchEvent(new Event('main-screen-interaction'));
+    
+    console.log('[ProductSelection] 🕐 Timer de inactividad reseteado por interacción con la pantalla');
+  }, []);
+  
+  // Update the handleFeedbackSubmitted function to handle different feedback types
+  // ✅ OPTIMIZADO: Envolver en useCallback para evitar re-renders infinitos
+  const handleFeedbackSubmitted = useCallback((feedback: 'happy' | 'neutral' | 'sad') => {
     console.log(`Feedback submitted: ${feedback}`);
-    // We no longer reset everything here, as we need to wait for the thank you modal to display
-  };
+    setLastFeedbackType(feedback); //  AGREGAR: Guardar el tipo de feedback
+    setShowSuccessModal(false);
+    
+    if (feedback === 'sad') {
+      // Si es carita triste, mostrar modal de detalles
+      setShowFeedbackDetail(true);
+    } else {
+      // Si es feliz o neutral, ir directo al modal de gracias
+      setShowFeedbackThankYou(true);
+    }
+  }, []);
 
-  // Add a new function to handle feedback completion (called after the thank you modal closes)
-  const handleFeedbackComplete = () => {
+  // ✅ OPTIMIZADO: Envolver en useCallback para evitar re-renders infinitos
+  const handleDetailedFeedback = useCallback((reason: string) => {
+    console.log(`Detailed feedback submitted: ${reason}`);
+    setLastFeedbackReason(reason); // 🔍 AGREGAR: Guardar la razón del feedback
+    // Cerrar modal de detalles y mostrar modal de gracias
+    setShowFeedbackDetail(false);
+    setShowFeedbackThankYou(true);
+  }, []);
+
+  // Handle feedback detail modal close
+  const handleFeedbackDetailClose = useCallback(() => {
+    console.log('Feedback detail modal closed without selection');
+    // Si se cierra sin seleccionar, ir directo al modal de gracias
+    setShowFeedbackDetail(false);
+    setShowFeedbackThankYou(true);
+  }, []);
+
+  // ✅ OPTIMIZADO: Envolver en useCallback para evitar re-renders infinitos
+  const handleFeedbackComplete = useCallback(() => {
     console.log('Feedback process complete, resetting application state');
     
     // Clear the cart (this will also clear localStorage)
@@ -519,6 +889,16 @@ const ProductSelection: React.FC = () => {
     
     // Close the cart UI
     closeCart();
+    
+    // Close all modals
+    setShowSuccessModal(false);
+    setShowFeedbackThankYou(false);
+    setShowFeedbackDetail(false);
+    setShowErrorModal(false);
+    setIsPaymentModalOpen(false);
+    setIsCameraModalOpen(false);
+    setIsRappiModalOpen(false);
+    setIsDocumentScanModalOpen(false);
     
     // Reset product display
     setSelectedProduct(null);
@@ -549,7 +929,7 @@ const ProductSelection: React.FC = () => {
     
     // Reset to splash screen
     resetToSplashScreen();
-  };
+  }, [clearCart, closeCart, filterCategories, dbProducts, applyFiltersToProducts, resetSensorActivated, resetProductDispensed, resetToSplashScreen]);
 
   // Handler for opening the Rappi modal
   const handleRappiClick = () => {
@@ -559,27 +939,490 @@ const ProductSelection: React.FC = () => {
 
   // Test handler for SuccessModal
   const handleTestSuccessModal = () => {
-    console.log('Test button clicked, opening SuccessModal');
+    console.log('Test button clicked, opening SuccessModal with product ID 75');
+    
+    // Buscar el producto con ID 75 en la base de datos
+    const product75 = dbProducts.find(p => p.id === '75');
+    
+    if (product75) {
+      console.log('Producto 75 encontrado:', product75);
+      setDispensingState({
+        totalProducts: 1,
+        currentProductIndex: 1,
+        currentProductName: product75.FS_SABOR || product75.name
+      });
+    } else {
+      console.log('Producto 75 no encontrado, usando nombre genérico');
+      setDispensingState({
+        totalProducts: 1,
+        currentProductIndex: 1,
+        currentProductName: 'Producto ID 75'
+      });
+    }
+    
     setShowSuccessModal(true);
   };
 
-  // Test handler for SuccessModal timeout
-  const handleSuccessModalTimeout = () => {
-    console.log('SuccessModal timed out, closing modal and resetting to splash');
-    setShowSuccessModal(false);
-    resetToSplashScreen();
+  // Test handler for multiple products
+  const handleTestMultiProductModal = () => {
+    console.log('Test Multi Products button clicked, simulating 3 products');
+    setDispensingState({
+      totalProducts: 3,
+      currentProductIndex: 1,
+      currentProductName: 'Vape Pod Mango 3000 Puffs'
+    });
+    setShowSuccessModal(true);
+    
+    // Simular cambio de productos cada 8 segundos
+    setTimeout(() => {
+      setDispensingState({
+        totalProducts: 3,
+        currentProductIndex: 2,
+        currentProductName: 'Energy Drink Red Bull'
+      });
+    }, 8000);
+    
+    setTimeout(() => {
+      setDispensingState({
+        totalProducts: 3,
+        currentProductIndex: 3,
+        currentProductName: 'Chocolate Snickers Bar'
+      });
+    }, 16000);
   };
+  
+  // Test handler for single product simulation
+  const handleTestSingleProduct = () => {
+    console.log('Test Single Product clicked, simulating single product dispensing');
+    setDispensingState({
+      totalProducts: 1,
+      currentProductIndex: 1,
+      currentProductName: 'Producto Único Test'
+    });
+    setShowSuccessModal(true);
+    
+    // Simular flujo del Arduino para producto único (tiempos reales)
+    setTimeout(() => {
+      console.log('[TEST] Simulando MMOK (motor activado)');
+      setArduinoStatus('motor-on');
+    }, 800);
+    
+    setTimeout(() => {
+      console.log('[TEST] Simulando SNOK (sensor activado)');
+      setArduinoStatus('sensor-on');
+    }, 1800);
+    
+    setTimeout(() => {
+      console.log('[TEST] Simulando STPOK (producto dispensado)');
+      setArduinoStatus('dispensed');
+    }, 2800);
+  };
+  
+  // Test handler for multiple products simulation (flujo real exacto)
+  const handleTestMultipleProducts = () => {
+    console.log('Test Multiple Products clicked, simulating multiple products dispensing');
+    setDispensingState({
+      totalProducts: 3,
+      currentProductIndex: 1,
+      currentProductName: 'Producto 1 de 3'
+    });
+    setShowSuccessModal(true);
+    
+    // Simular flujo del Arduino para producto 1 (tiempos reales)
+    setTimeout(() => {
+      console.log('[TEST] Producto 1 - MMOK (motor activado)');
+      setArduinoStatus('motor-on');
+    }, 800);
+    
+    setTimeout(() => {
+      console.log('[TEST] Producto 1 - SNOK (sensor activado)');
+      setArduinoStatus('sensor-on');
+    }, 1800);
+    
+    setTimeout(() => {
+      console.log('[TEST] Producto 1 - STPOK (producto dispensado)');
+      setArduinoStatus('dispensed');
+    }, 2800);
+    
+    // Simular cambio al producto 2 (máximo 3s entre productos)
+    setTimeout(() => {
+      console.log('[TEST] Cambiando a Producto 2');
+      setDispensingState({
+        totalProducts: 3,
+        currentProductIndex: 2,
+        currentProductName: 'Producto 2 de 3'
+      });
+      setArduinoStatus('idle');
+      
+      // Simular flujo del Arduino para producto 2 (tiempos reales)
+      setTimeout(() => {
+        console.log('[TEST] Producto 2 - MMOK (motor activado)');
+        setArduinoStatus('motor-on');
+      }, 800);
+      
+      setTimeout(() => {
+        console.log('[TEST] Producto 2 - SNOK (sensor activado)');
+        setArduinoStatus('sensor-on');
+      }, 1800);
+      
+      setTimeout(() => {
+        console.log('[TEST] Producto 2 - STPOK (producto dispensado)');
+        setArduinoStatus('dispensed');
+      }, 2800);
+    }, 3000); // Solo 3s de delay entre productos
+    
+    // Simular cambio al producto 3 (máximo 3s entre productos)
+    setTimeout(() => {
+      console.log('[TEST] Cambiando a Producto 3');
+      setDispensingState({
+        totalProducts: 3,
+        currentProductIndex: 3,
+        currentProductName: 'Producto 3 de 3'
+      });
+      setArduinoStatus('idle');
+      
+      // Simular flujo del Arduino para producto 3 (tiempos reales)
+      setTimeout(() => {
+        console.log('[TEST] Producto 3 - MMOK (motor activado)');
+        setArduinoStatus('motor-on');
+      }, 800);
+      
+      setTimeout(() => {
+        console.log('[TEST] Producto 3 - SNOK (sensor activado)');
+        setArduinoStatus('sensor-on');
+      }, 1800);
+      
+      setTimeout(() => {
+        console.log('[TEST] Producto 3 - STPOK (producto dispensado)');
+        setArduinoStatus('dispensed');
+      }, 2800);
+    }, 6000); // Solo 3s de delay entre productos
+  };
+
+  // 🧪 NUEVO: Test handler para validar dispensado múltiple corregido
+  const handleTestMultipleDispense = () => {
+    console.log('🧪 TEST: Validando dispensado múltiple corregido');
+    
+    // Simular carrito con 3 productos diferentes
+    const testProducts = [
+      { id: 'test1', name: 'Coca Cola', sabor: 'Coca Cola' },
+      { id: 'test2', name: 'Chocohips', sabor: 'Chocohips' },
+      { id: 'test3', name: 'Fanta', sabor: 'Fanta' }
+    ];
+    
+    // Limpiar carrito y agregar productos de prueba
+    clearCart();
+    testProducts.forEach(product => {
+      addToCart({
+        id: product.id,
+        name: product.name,
+        FS_SABOR: product.sabor,
+        price: 5.00,
+        slot_quantity: 10,
+        image: '/path/to/image.jpg',
+        brand: 'Test Brand',
+        puffs: 0,
+        slot_id: 'test-slot',
+        category: 'test-category'
+      });
+    });
+    
+    // Simular flujo de dispensado múltiple SIN hardware
+    console.log('🧪 TEST: Iniciando simulación de dispensado múltiple');
+    
+    // Configurar estado inicial
+    setDispensingState({
+      totalProducts: 3,
+      currentProductIndex: 1,
+      currentProductName: 'Coca Cola'
+    });
+    
+    // Abrir SuccessModal
+    setShowSuccessModal(true);
+    
+    // Simular progreso del producto 1 (Coca Cola) - 3 segundos
+    setTimeout(() => {
+      console.log('🧪 TEST: Producto 1 - Coca Cola completado');
+      setDispensingState({
+        totalProducts: 3,
+        currentProductIndex: 2,
+        currentProductName: 'Chocohips'
+      });
+    }, 3000);
+    
+    // Simular progreso del producto 2 (Chocohips) - 6 segundos total
+    setTimeout(() => {
+      console.log('🧪 TEST: Producto 2 - Chocohips completado');
+      setDispensingState({
+        totalProducts: 3,
+        currentProductIndex: 3,
+        currentProductName: 'Fanta'
+      });
+    }, 6000);
+    
+    // Simular progreso del producto 3 (Fanta) - 9 segundos total
+    setTimeout(() => {
+      console.log('🧪 TEST: Producto 3 - Fanta completado');
+      setDispensingState({
+        totalProducts: 3,
+        currentProductIndex: 3,
+        currentProductName: 'Fanta'
+      });
+      console.log('🧪 TEST: Todos los productos dispensados, esperando 3 segundos más para mostrar caritas');
+      
+      // Esperar 1.5 segundos más para que se vea "3 de 3" antes de cambiar a caritas
+      setTimeout(() => {
+        console.log('🧪 TEST: Cambiando a caritas después de mostrar "3 de 3"');
+        // Forzar el cambio a 'dispensed' manualmente
+        const successModal = document.querySelector('[data-success-modal]');
+        if (successModal) {
+          // Disparar evento personalizado para cambiar a 'dispensed'
+          window.dispatchEvent(new CustomEvent('force-dispensed'));
+        }
+      }, 1500);
+    }, 9000);
+  };
+
+  // Test handler para probar integración con Arduino
+  const handleTestArduinoIntegration = () => {
+    console.log('[TEST] 🚀 Iniciando prueba de integración con Arduino');
+    
+    // Simular carrito con múltiples productos (ejemplo: 3 productos)
+    const testItems = [
+      { product: { name: 'Coca Cola', FS_SABOR: 'Coca Cola', price: 1.00, slot_id: 'test-slot-1', category: 'test-category' }, quantity: 1 },
+      { product: { name: 'Fanta', FS_SABOR: 'Fanta', price: 1.50, slot_id: 'test-slot-2', category: 'test-category' }, quantity: 1 },
+      { product: { name: 'Sprite', FS_SABOR: 'Sprite', price: 1.50, slot_id: 'test-slot-3', category: 'test-category' }, quantity: 1 }
+    ];
+    
+    // Calcular total de productos
+    const totalProductUnits = testItems.reduce((sum, item) => sum + item.quantity, 0);
+    
+    // Configurar estado de dispensado
+    setDispensingState({
+      totalProducts: totalProductUnits,
+      currentProductIndex: 0,
+      currentProductName: ''
+    });
+    
+    // Abrir modal de éxito
+    setShowSuccessModal(true);
+    
+    // Simular flujo de dispensado con Arduino
+    let currentProductIndex = 0;
+    let currentItemIndex = 0;
+    let currentUnitIndex = 0;
+    
+    const simulateArduinoResponse = () => {
+      if (currentItemIndex >= testItems.length) {
+        console.log('[TEST] ✅ Simulación completada - todos los productos dispensados');
+        return;
+      }
+      
+      const currentItem = testItems[currentItemIndex];
+      const currentProduct = currentItem.product;
+      
+      if (currentUnitIndex >= currentItem.quantity) {
+        // Pasar al siguiente producto
+        currentItemIndex++;
+        currentUnitIndex = 0;
+        simulateArduinoResponse();
+        return;
+      }
+      
+      currentProductIndex++;
+      currentUnitIndex++;
+      
+      console.log(`[TEST] Arduino STPOK: ${currentProductIndex} de ${totalProductUnits} - ${currentProduct.FS_SABOR}`);
+      
+      // Simular respuesta STPOK del Arduino
+      setDispensingState({
+        totalProducts: totalProductUnits,
+        currentProductIndex: currentProductIndex,
+        currentProductName: currentProduct.FS_SABOR
+      });
+      
+      // 🚀 SIMULAR FLUJO COMPLETO DEL ARDUINO: motor-on → dispensed
+      console.log(`[TEST] Motor girando para: ${currentProduct.FS_SABOR}`);
+      setArduinoStatus('motor-on');
+      
+      // Simular tiempo de giro del motor (1-2 segundos)
+      const motorTime = Math.random() * 1000 + 1000; // 1-2 segundos
+      setTimeout(() => {
+        console.log(`[TEST] STPOK recibido para: ${currentProduct.FS_SABOR}`);
+        setArduinoStatus('dispensed');
+        
+        // Simular delay antes del siguiente producto (0.5-1 segundo)
+        const nextDelay = Math.random() * 500 + 500; // 0.5-1 segundo
+        setTimeout(() => {
+          // Resetear estado del Arduino para el siguiente producto
+          setArduinoStatus('idle');
+          simulateArduinoResponse();
+        }, nextDelay);
+      }, motorTime);
+    };
+    
+    // Iniciar simulación después de 500ms
+    setTimeout(simulateArduinoResponse, 500);
+  };
+
+  // Test handler para simular SuccessModal con uno y varios productos (SIN Arduino)
+  const handleTestSuccessModalSimulation = () => {
+    console.log('[TEST] 🚀 Iniciando simulación del SuccessModal (SIN Arduino)');
+    
+    // Abrir modal de selección
+    setShowSimulationModal(true);
+  };
+
+  // Funciones para manejar las diferentes opciones de simulación
+  const handleSimulationChoice = (choice: number) => {
+    console.log(`[TEST] Seleccionada opción ${choice}`);
+    
+    switch (choice) {
+      case 1:
+        console.log('[TEST] Simulando UN SOLO PRODUCTO');
+        setDispensingState({
+          totalProducts: 1,
+          currentProductIndex: 1,
+          currentProductName: 'Vape Pod Mango 3000 Puffs'
+        });
+        setShowSuccessModal(true);
+        break;
+
+      case 2:
+        console.log('[TEST] Simulando 2 PRODUCTOS');
+        setDispensingState({
+          totalProducts: 2,
+          currentProductIndex: 1,
+          currentProductName: 'Vape Pod Mango 3000 Puffs'
+        });
+        setShowSuccessModal(true);
+        break;
+
+      case 3:
+        console.log('[TEST] Simulando 3 PRODUCTOS');
+        setDispensingState({
+          totalProducts: 3,
+          currentProductIndex: 1,
+          currentProductName: 'Vape Pod Mango 3000 Puffs'
+        });
+        setShowSuccessModal(true);
+        break;
+
+      case 4:
+        console.log('[TEST] Simulando 5 PRODUCTOS');
+        setDispensingState({
+          totalProducts: 5,
+          currentProductIndex: 1,
+          currentProductName: 'Vape Pod Mango 3000 Puffs'
+        });
+        setShowSuccessModal(true);
+        break;
+
+      default:
+        console.error('[TEST] Opción inválida:', choice);
+        return;
+    }
+
+    const timeMap = { 1: '2.8s', 2: '5.6s', 3: '8.4s', 4: '14s' };
+    const productMap = { 1: '1 producto', 2: '2 productos', 3: '3 productos', 4: '5 productos' };
+    
+    console.log(`[TEST] ✅ SuccessModal abierto con ${productMap[choice as keyof typeof productMap]}`);
+    console.log(`[TEST] ⏰ Tiempo estimado: ${timeMap[choice as keyof typeof timeMap]}`);
+    
+    // Cerrar modal de simulación
+    setShowSimulationModal(false);
+  };
+  
+  // Test handler para simular pago exitoso completo CON SIMULACIÓN DE ARDUINO
+  const handleTestPagoExitoso = async () => {
+    console.log('[TEST] 🚀 Iniciando simulación de pago exitoso completo CON ARDUINO');
+    
+    try {
+      // 1. Simular que hay productos en el carrito
+      const testProduct = dbProducts[0]; // Tomar el primer producto disponible
+      if (!testProduct) {
+        console.error('[TEST] No hay productos disponibles para la prueba');
+        return;
+      }
+      
+      console.log('[TEST] Producto seleccionado para prueba:', testProduct.name);
+      
+      // 2. Simular que el hardware está inicializado
+      if (!isInitialized) {
+        console.log('[TEST] Hardware no inicializado, inicializando...');
+        await initialize();
+      }
+      
+      // 3. Simular que hay productos en el carrito
+      console.log('[TEST] Agregando producto de prueba al carrito');
+      clearCart(); // Limpiar carrito primero
+      addToCart(testProduct); // Agregar producto de prueba
+      
+      // 4. Simular que el pago fue exitoso y llamar directamente a handlePaymentComplete
+      console.log('[TEST] Llamando a handlePaymentComplete para simular flujo completo');
+      await handlePaymentComplete();
+      
+      // 5. 🚀 ABRIR SUCCESSMODAL DIRECTAMENTE PARA LA SIMULACIÓN
+      console.log('[TEST] 🚀 Abriendo SuccessModal directamente para la simulación');
+      setDispensingState({
+        totalProducts: 1,
+        currentProductIndex: 1,
+        currentProductName: testProduct.FS_SABOR || testProduct.name
+      });
+      setShowSuccessModal(true);
+      
+      // 6. 🚀 SIMULACIÓN DEL ARDUINO DESPUÉS DE ABRIR EL MODAL
+      console.log('[TEST] 🚀 Iniciando simulación del Arduino...');
+      
+      // Simular flujo completo del Arduino (tiempos reales)
+      setTimeout(() => {
+        console.log('[TEST] Arduino: Simulando MMOK (motor activado)');
+        setArduinoStatus('motor-on');
+      }, 1000); // 1s después de abrir el modal
+      
+      setTimeout(() => {
+        console.log('[TEST] Arduino: Simulando SNOK (sensor activado)');
+        setArduinoStatus('sensor-on');
+      }, 3000); // 3s después de abrir el modal
+      
+      setTimeout(() => {
+        console.log('[TEST] Arduino: Simulando STPOK (producto dispensado)');
+        setArduinoStatus('dispensed');
+      }, 5000); // 5s después de abrir el modal
+      
+      console.log('[TEST] ✅ Simulación de pago exitoso + Arduino completada');
+      
+    } catch (error) {
+      console.error('[TEST] ❌ Error en simulación de pago exitoso:', error);
+    }
+  };
+
+  // Modificar el handler de SuccessModal timeout para mostrar el modal de caritas
+  // ✅ OPTIMIZADO: Envolver en useCallback para evitar re-renders infinitos
+  const handleSuccessModalTimeout = useCallback(() => {
+    console.log('SuccessModal timed out, closing modal y yendo al splash screen');
+    setShowSuccessModal(false);
+    
+    // Clear the cart
+    clearCart();
+    
+    // Reset to splash screen
+    resetToSplashScreen();
+  }, [clearCart, resetToSplashScreen]);
 
   // Hardware status check
   const isHardwareConnected = Boolean(status?.arduino?.connected);
   const [isDispensing, setIsDispensing] = useState(false);
+  
+
+  
   const [testSlotId, setTestSlotId] = useState('A1');
   const [selectedTestProduct, setSelectedTestProduct] = useState<Product | null>(null);
   const [testDispenseResult, setTestDispenseResult] = useState<string | null>(null);
   const [hardwareStatus, setHardwareStatus] = useState<HardwareStatus | null>(null);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
   const [inventory, setInventory] = useState<Record<string, number>>({});
-
+  
   // Handle document scan result
   const handleVerificationComplete = (result: { success: boolean; age?: number; message?: string }) => {
     console.log('Verification result:', result);
@@ -789,8 +1632,13 @@ const ProductSelection: React.FC = () => {
         }
 
         // 4. Initiate the verification/payment flow
-        console.log('[DirectPurchase] Opening CameraModal...');
-        setIsCameraModalOpen(true);
+        if (features.facialRecognition) {
+          setIsCameraModalOpen(true);
+        } else {
+          // Guardar usuario id 0 en sessionStorage con clave FS_ID
+          window.sessionStorage.setItem('currentUser', JSON.stringify({ FS_ID: 0 }));
+          setIsPaymentModalOpen(true);
+        }
     } else {
         console.warn('[DirectPurchase] Could not add product to cart (cart rule violation). Aborting direct purchase.');
         // Cart-specific error message should be displayed by handleAddToCart already
@@ -863,30 +1711,290 @@ const ProductSelection: React.FC = () => {
     </button>
   );
 
+  // Add floating button to test success modal with dispensing process
+  const TestSuccessButton = () => (
+    <button
+      onClick={handleTestSuccessModal}
+      className="fixed bottom-20 left-44 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-full shadow-lg z-50 flex items-center"
+    >
+      Test Success
+    </button>
+  );
+
+  // Add floating button to test multiple products dispensing
+  const TestMultiButton = () => (
+    <button
+      onClick={handleTestMultiProductModal}
+      className="fixed bottom-20 left-80 bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-full shadow-lg z-50 flex items-center"
+    >
+      Test Multi
+    </button>
+  );
+
+  // Simple function to close feedback thank you modal and reset to splash
+  const handleFeedbackThankYouClose = useCallback(() => {
+    console.log('[ProductSelection] Feedback thank you modal closing, resetting to splash');
+    
+    // Close the modal first
+    setShowFeedbackThankYou(false);
+    
+    // Clear the cart
+    clearCart();
+    
+    // Simple reset - just close modal and clear cart for now
+    console.log('[ProductSelection] Modal closed and cart cleared');
+    
+    // Reset to splash screen
+    resetToSplashScreen();
+  }, [clearCart, resetToSplashScreen]);
+
+  // Test function to test feedback with a real payment transaction ID
+  const testFeedbackWithRealTransactionId = async () => {
+    console.log('[ProductSelection] Testing feedback with real transaction ID: 0000526512253768');
+    
+    try {
+      // Test happy feedback
+      const happyResult = await window.electron.ipcRenderer.invoke('purchase:submitFeedback', {
+        paymentTransactionId: '0000526512253768',
+        feedbackValue: 'happy',
+        feedbackReason: null
+      });
+      console.log('[ProductSelection] Happy feedback result:', happyResult);
+      
+      // Test sad feedback with reason
+      const sadResult = await window.electron.ipcRenderer.invoke('purchase:submitFeedback', {
+        paymentTransactionId: '0000526512253768',
+        feedbackValue: 'sad',
+        feedbackReason: 'No tenia mi producto'
+      });
+      console.log('[ProductSelection] Sad feedback result:', sadResult);
+      
+      alert('Feedback test completed! Check console for results.');
+    } catch (error) {
+      console.error('[ProductSelection] Error testing feedback:', error);
+      alert(`Error testing feedback: ${error}`);
+    }
+  };
+
+  // Add floating button to test feedback with real transaction ID
+  const TestFeedbackButton = () => (
+    <button
+      onClick={testFeedbackWithRealTransactionId}
+      className="fixed bottom-20 left-80 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full shadow-lg z-50 flex items-center"
+    >
+      Test Feedback
+    </button>
+  );
+
+  // Add floating button to simulate SuccessModal with one and multiple products
+  const TestSuccessModalSimulationButton = () => (
+    <button
+      onClick={handleTestSuccessModalSimulation}
+      className="fixed bottom-20 left-96 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-full shadow-lg z-50 flex items-center"
+    >
+      Test SuccessModal Sim
+    </button>
+  );
+
+  // 🧪 NUEVO: Botón para validar dispensado múltiple corregido
+  const TestMultipleDispenseButton = () => (
+    <button
+      onClick={handleTestMultipleDispense}
+      className="fixed bottom-20 left-80 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-full shadow-lg z-50 flex items-center"
+    >
+      🧪 Test Dispensado Múltiple
+    </button>
+  );
+
+  // 🚀 NUEVO: Botón para probar integración con Arduino
+  const TestArduinoIntegrationButton = () => (
+    <button
+      onClick={handleTestArduinoIntegration}
+      className="fixed bottom-20 left-96 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-full shadow-lg z-50 flex items-center"
+    >
+      🚀 Test Arduino Integration
+    </button>
+  );
+
+  // Test function to simulate a real payment flow
+  const simulateRealPaymentFlow = async () => {
+    console.log('[ProductSelection] Starting real payment flow simulation');
+    
+    try {
+      // Simulate adding a product to cart
+      const testProduct = dbProducts.find(p => p.id === '75') || dbProducts[0];
+      if (!testProduct) {
+        console.error('No test product found');
+        return;
+      }
+      
+      // Add product to cart
+      addToCart(testProduct);
+      console.log('[ProductSelection] Added test product to cart:', testProduct.name);
+      
+      // Simulate opening payment modal
+      setIsPaymentModalOpen(true);
+      console.log('[ProductSelection] Payment modal opened');
+      
+      // Simulate successful payment after 3 seconds
+      setTimeout(() => {
+        console.log('[ProductSelection] Simulating successful payment');
+        
+        // Close payment modal
+        setIsPaymentModalOpen(false);
+        
+        // Show success modal (this will trigger the real flow)
+        setShowSuccessModal(true);
+        
+        // Simulate dispense completion after 4 seconds
+        setTimeout(() => {
+          console.log('[ProductSelection] Dispense completed, showing feedback options');
+          // The SuccessModal will automatically show feedback options
+        }, 4000);
+        
+      }, 3000);
+      
+    } catch (error) {
+      console.error('[ProductSelection] Error in payment flow simulation:', error);
+    }
+  };
+
+  // Test function to simulate successful POS response (code 00)
+  const simulateSuccessfulPOSResponse = async () => {
+    console.log('[ProductSelection] Starting successful POS response simulation');
+    
+    try {
+      // Simulate adding a product to cart
+      const testProduct = dbProducts.find(p => p.id === '75') || dbProducts[0];
+      if (!testProduct) {
+        console.error('No test product found');
+        return;
+      }
+      
+      // Add product to cart
+      addToCart(testProduct);
+      console.log('[ProductSelection] Added test product to cart:', testProduct.name);
+      
+      // Simulate opening payment modal
+      setIsPaymentModalOpen(true);
+      console.log('[ProductSelection] Payment modal opened');
+      
+      // Simulate successful POS response after 5 seconds (code 00)
+      setTimeout(() => {
+        console.log('[ProductSelection] Simulating successful POS response (code 00)');
+        
+        // Simulate the payment success flow
+        const mockTransactionId = 'TEST_' + Date.now();
+        window.sessionStorage.setItem('currentTransactionId', mockTransactionId);
+        
+        // Close payment modal and show success modal
+        setIsPaymentModalOpen(false);
+        handlePaymentComplete();
+        
+      }, 5000);
+      
+    } catch (error) {
+      console.error('[ProductSelection] Error in POS simulation:', error);
+    }
+  };
+
+  // Test function to let timer expire and show REINTENTAR modal
+  const simulateTimerExpiration = async () => {
+    console.log('[ProductSelection] Starting timer expiration simulation');
+    
+    try {
+      // Simulate adding a product to cart
+      const testProduct = dbProducts.find(p => p.id === '75') || dbProducts[0];
+      if (!testProduct) {
+        console.error('No test product found');
+        return;
+      }
+      
+      // Add product to cart
+      addToCart(testProduct);
+      console.log('[ProductSelection] Added test product to cart:', testProduct.name);
+      
+      // Simulate opening payment modal
+      setIsPaymentModalOpen(true);
+      console.log('[ProductSelection] Payment modal opened - Timer will expire in 120 seconds');
+      console.log('[ProductSelection] Let the timer countdown to 0 to see REINTENTAR modal');
+      
+      // Don't close the modal - let the timer expire naturally
+      // The modal will show "ERROR EN EL PAGO" with "REINTENTAR" button after 120s
+      
+    } catch (error) {
+      console.error('[ProductSelection] Error in timer expiration simulation:', error);
+    }
+  };
+
+  // Test button for real payment flow simulation
+  const TestRealPaymentButton = () => (
+    <button
+      onClick={simulateRealPaymentFlow}
+      className="fixed bottom-20 left-20 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-full shadow-lg z-50 flex items-center"
+    >
+      Test Pago Real
+    </button>
+  );
+
+  // Test button to open payment modal directly
+  const TestPaymentModalButton = () => (
+    <button
+      onClick={() => setIsPaymentModalOpen(true)}
+      className="fixed bottom-20 left-32 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-full shadow-lg z-50 flex items-center"
+    >
+      Test Modal Pago
+    </button>
+  );
+
+  // Test button to simulate successful POS response
+  const TestSuccessfulPOSButton = () => (
+    <button
+      onClick={simulateSuccessfulPOSResponse}
+      className="fixed bottom-20 left-44 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded-full shadow-lg z-50 flex items-center"
+    >
+      Test POS Exitoso
+    </button>
+  );
+
+  // Test button to let timer expire and see REINTENTAR modal
+  const TestTimerExpirationButton = () => (
+    <button
+      onClick={simulateTimerExpiration}
+      className="fixed bottom-20 left-56 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-full shadow-lg z-50 flex items-center"
+    >
+      Test Timer 0
+    </button>
+  );
+
   return (
-    <main className="relative min-h-screen bg-black text-white">
+    <main 
+      className="relative min-h-screen bg-black text-white"
+      onClick={handleScreenInteraction}
+    >
       {/* Hero Section - Full width */}
-      <section className="relative w-full overflow-hidden">
+      <section 
+        className="relative w-full overflow-hidden"
+        onClick={handleScreenInteraction}
+      >
         <img
           src={banners[currentBanner]}
           alt={`Banner ${currentBanner + 1}`}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-fill"
         />
       </section>
 
       {/* Title and Filter Bar */}
-      <div className="flex flex-col mt-[40px] pl-[30px] pr-[30px] mb-[20px]">
+      <div 
+        className="flex flex-col mt-[40px] pl-[30px] pr-[30px] mb-[20px]"
+        onClick={handleScreenInteraction}
+      >
         <div className="flex items-center justify-between mb-[20px]">
-          <h2 className="text-[32px] font-extrabold text-white font-akira">ESCOGE TU VAPE</h2>
+          <h2 className="text-[32px] font-extrabold text-white font-akira">Escoge tus productos</h2>
           <div className="flex items-center gap-4">
-            {/* Test Button for SuccessModal */}
-            <button 
-              className="px-[16px] py-[16px] rounded-[447px] text-[18px] font-semibold bg-green-600 text-white hover:bg-green-700 transition-colors"
-              onClick={handleTestSuccessModal}
-            >
-              <span className="font-bold">TEST SUCCESS</span>
-            </button>
-            
+            <span className="font-bold text-[18px] text-white mb-4">
+              {temperature !== null && temperature !== undefined ? `${temperature}°C` : ''}
+            </span>
             <button 
               className={`px-[16px] py-[16px] rounded-[447px] text-[24px] font-semibold relative ${
                 Object.values(activeFilters).some(filters => filters.length > 0) 
@@ -912,15 +2020,16 @@ const ProductSelection: React.FC = () => {
               filters.map(filter => {
                 // Find the label for this filter
                 const filterCategory = filterCategories.find(cat => cat.name === category);
-                const filterOption = filterCategory?.options.find(opt => opt.id === filter);
+                const filterOption = filterCategory?.options.find((opt: any) => opt.id === filter);
                 
                 if (!filterOption) return null;
                 
                 // Format the label based on category
                 let displayLabel = filterOption.label;
-                if (category === 'Puffs') {
-                  displayLabel = `${displayLabel} Puffs`;
-                }
+                // Eliminar el agregado de 'Puffs' para el filtro de precio
+                // if (category === 'Precio') {
+                //   displayLabel = `${displayLabel} Puffs`;
+                // }
                 
                 return (
                   <div 
@@ -955,7 +2064,10 @@ const ProductSelection: React.FC = () => {
       </div>
 
       {/* Main content with flex layout */}
-      <div className="flex h-full">
+      <div 
+        className="flex h-full"
+        onClick={handleScreenInteraction}
+      >
         {/* Product Grid Section - Always Scrollable */}
         <section 
           id="product-grid" 
@@ -965,13 +2077,14 @@ const ProductSelection: React.FC = () => {
             paddingBottom: "400px",
             marginRight: '10px'
           }}
+          onClick={handleScreenInteraction}
         >
           <div className="pb-[400px]">
             {/* ===== START OF INLINE LOADING SECTION ===== */}
             {loading ? (
               <div className="flex flex-col items-center justify-center pt-[10vh] text-center">
                 <img src={vapeBoxLogo} alt="Cargando..." className="w-32 h-32 mb-6 animate-pulse" />
-                <h2 className="text-3xl font-bold mb-2 text-gray-300">Preparando tu vape...</h2>
+                <h2 className="text-3xl font-bold mb-2 text-gray-300">Cargando productos...</h2>
                 <p className="text-xl text-gray-400 mb-4">Solo unos segundos</p>
                 {/* Animated Progress Bar */}
                 <div className="w-64 h-2.5 bg-gray-700 rounded-full overflow-hidden">
@@ -987,11 +2100,25 @@ const ProductSelection: React.FC = () => {
                     onClick={() => handleProductSelect(product)}
                     data-productid={product.id}
                   >
-                    {product.discount && (
-                      <span className="absolute top-[9px] right-[9px] bg-[#ff4545] text-white px-[14px] py-[6px] text-[10px] font-[700] rounded-[36px] leading-[initial]">
-                        {product.discount}%
+                    {/* Badge de descuento si FS_DSCTO > 0 */}
+                    {(() => {
+                      // Remover el símbolo % del descuento antes de convertir a número
+                      const cleanDiscount = product.discount ? product.discount.toString().replace('%', '') : '';
+                      const discountNumber = Number(cleanDiscount);
+                      const hasDiscount = cleanDiscount && !isNaN(discountNumber) && discountNumber > 0;
+                      
+                      return hasDiscount && (
+                        <span className="absolute top-3 right-3 bg-[#FF4545] text-white px-2 py-0.5 text-[10px] font-bold rounded-full z-10 shadow-md">
+                          -{discountNumber}%
+                        </span>
+                      );
+                    })()}
+                    {/* Precio arriba de la imagen (eliminar) */}
+                    {/* <div className="w-full flex justify-center mb-1">
+                      <span className="text-white text-[5px] font-bold">
+                        s/{formatPrice(calculateDiscountedPrice(product.price, product.discount))}
                       </span>
-                    )}
+                    </div> */}
                     <div className="flex-1 flex items-center justify-center image-container" style={{ minHeight: '105px' }}>
                       <img
                         src={product.image || vapeBoxLogo}
@@ -1000,9 +2127,16 @@ const ProductSelection: React.FC = () => {
                         data-productid-img={product.id}
                       />
                     </div>
-                    <div className="text-center">
-                      <p className="text-[10px] font-[400] text-gray-600">{product.FS_SABOR}</p>
-                      <p className="text-[12px] font-[600] text-black">s/{formatPrice(calculateDiscountedPrice(product.price, product.discount))}</p>
+                    <div className="text-center mt-2">
+                      {/* Medida o descripción */}
+                      {/* 
+                      <p className="text-[12px] text-gray-500">{product.FS_DIMENSION || ''}</p>
+                      {/* Nombre */}
+                      */
+
+                      <p className="text-[10px] font-bold text-gray-500">{product.FS_SABOR || product.name}</p>
+                      {/* Precio */}
+                      <p className="text-[16px] font-bold text-black mt-1">s/{formatPrice(calculateDiscountedPrice(product.price, product.discount))}</p>
                     </div>
                   </div>
                 ))}
@@ -1011,9 +2145,17 @@ const ProductSelection: React.FC = () => {
               <div className="flex flex-col justify-start items-center h-full w-full bg-black relative pt-[10vh]">
                 <div className="text-center px-4 max-w-2xl mb-4">
                   <h2 className="text-[32px] font-extrabold text-[#929292] font-akira text-center leading-tight">
-                    LO SENTIMOS, NO HAY LO QUE BUSCAS POR EL MOMENTO
+                    Lo sentimos, no hay lo que buscas por el momento
                   </h2>
                   <p className="text-[24px] font-medium text-[#929292] mt-4">(Elimina filtros)</p>
+                  <div className="flex justify-center mt-6">
+                    <img 
+                      src={emptyStateNoFilters} 
+                      alt="Empty state" 
+                      className="max-h-[280px] w-auto object-contain opacity-60"
+                      style={{ objectPosition: 'center bottom' }}
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -1029,6 +2171,7 @@ const ProductSelection: React.FC = () => {
               height: "calc(100vh - 200px)",
               paddingBottom: "800px"
             }}
+            onClick={handleScreenInteraction}
           >
             <div className="pb-[800px]">
               <div className="pt-3 pr-6 pb-6 pl-0 flex flex-col">
@@ -1050,83 +2193,85 @@ const ProductSelection: React.FC = () => {
                       className="w-full aspect-square object-contain p-4" 
                     />
                   </div>
-                  <div className="mb-8">
-                    <h2 className="text-[18px] text-white uppercase font-normal mb-2">{selectedProduct.brand}</h2>
-                    <div className="relative flex justify-between items-center">
-                      <h1 className="text-[18px] font-semibold text-white">
-                        {selectedProduct.name}{selectedProduct.puffs > 0 ? ` - ${selectedProduct.puffs.toLocaleString()} Puffs` : ''}
-                      </h1>
-                      {selectedProduct.discount && selectedProduct.discount !== '' && selectedProduct.discount !== '0' ? (
-                        <span className="absolute top-1/2 right-0 transform -translate-y-1/2 bg-[#ff4545] text-white px-[12px] py-[8px] text-[12px] font-[700] rounded-[36px]">
-                          {selectedProduct.discount}% OFF
-                        </span>
-                      ) : null}
+                  {/* Título y marca */}
+                  <div className="mb-2">
+                    <div className="text-[13px] text-gray-400 uppercase font-medium mb-1">
+                      {selectedProduct.brand || selectedProduct.name} {selectedProduct.puffs ? `${selectedProduct.puffs.toLocaleString()} Puffs` : ''}
                     </div>
+                    <div className="text-[20px] text-white font-extrabold leading-tight mb-2">{selectedProduct.FS_SABOR || 'Sin sabor'}</div>
                   </div>
-                  <div className="mb-[16px]">
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-[12px] text-white font-bold">Marca</span>
-                        <span className="text-[12px] text-white font-medium">{selectedProduct.brand}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-[12px] text-white font-bold">Modelo</span>
-                        <span className="text-[12px] text-white font-medium">{selectedProduct.name}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-[12px] text-white font-bold">Sabor</span>
-                        <span className="text-[12px] text-white font-medium">{selectedProduct.FS_SABOR}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-[12px] text-white font-bold">Porcentaje nicotina</span>
-                        <span className="text-[12px] text-white font-medium">{selectedProduct.FS_PORCENTAJE_NICOTINA}%</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-[12px] text-white font-bold">Precio original</span>
-                        <span className="text-[12px] text-white font-medium">
-                          s/{formatPrice(selectedProduct.price)}
-                        </span>
-                      </div>
+                  {/* Lista de contenido */}
+                  {selectedProduct.FS_DES_PROD_CONT && (
+                    <ul className="mb-2 text-white text-[13px] list-disc list-inside">
+                      {selectedProduct.FS_DES_PROD_CONT.split(/\n|;/)
+                        .map((line, idx) => line.trim())
+                        .filter(line => !filterCategories.find(cat => cat.name === 'Categoria')?.options.some((opt: any) => opt.label === line))
+                        .map((line, idx) => (
+                          <li key={idx}>{line}</li>
+                        ))}
+                    </ul>
+                  )}
+                  {/* Descripción detallada */}
+                  {selectedProduct.FS_DES_PROD_DETA && (
+                    <div className="bg-[#232323] text-gray-200 text-[12px] rounded-md p-3 mb-4">
+                      <div className="font-semibold mb-1">Sobre el producto</div>
+                      <div>{selectedProduct.FS_DES_PROD_DETA}</div>
                     </div>
+                  )}
+                  {/* Tabla de detalles */}
+                  <div className="mb-4">
+                    <div className="flex justify-between text-[13px] text-white mb-1">
+                      <span className="font-bold">Contenido</span>
+                      <span>{selectedProduct.name || selectedProduct.FS_DES_PROD || selectedProduct.FS_DIMENSION}</span>
+                    </div>
+                  {/*
+                  <div className="flex justify-between text-[13px] text-white mb-1">
+                    <span className="font-bold">Punto de Carga</span>
+                    <span>{selectedProduct.FS_TIP_CARGA}</span>
                   </div>
-                  <div className="mt-auto">
-                    <div className="flex flex-col gap-2">
+                  <div className="flex justify-between text-[13px] text-white mb-1">
+                    <span className="font-bold">Marca</span>
+                    <span>{selectedProduct.brand}</span>
+                  </div>
+                  */}
+                  </div>
+                  {/* Botones de acción */}
+                  <div className="mt-auto flex flex-col gap-2">
+                    <Button 
+                      variant="cart" 
+                      className={`w-[100%] mx-auto flex items-center justify-between px-4 ${selectedProduct.slot_quantity > 0 && getCartItemQuantity(selectedProduct.id) < selectedProduct.slot_quantity
+                          ? "bg-white text-black hover:bg-gray-200" 
+                          : "bg-gray-400 text-gray-700 cursor-not-allowed"
+                      } h-[60px] text-[18px] font-semibold rounded-[8px]`}
+                      onClick={() => handleAddToCart(selectedProduct)}
+                    >
+                      <span>Añadir a Carrito</span>
+                      <ShoppingCartIcon size={24} />
+                    </Button>
+                    {cartErrors[selectedProduct.id] && (
+                      <div className="text-red-500 mt-2 text-[10px] font-semibold text-center">
+                        {cartErrors[selectedProduct.id]}
+                      </div>
+                    )}
+                    {detailStockError && (
+                      <div className="text-red-500 mt-2 text-[10px] font-semibold text-center">
+                        {detailStockError}
+                      </div>
+                    )}
+                    {selectedProduct && !(cart.isOpen && cart.items.length > 0) ? (
                       <Button 
-                        variant="cart" 
-                        className={`w-[100%] mx-auto flex items-center justify-between px-4 ${selectedProduct.slot_quantity > 0 && getCartItemQuantity(selectedProduct.id) < selectedProduct.slot_quantity
-                            ? "bg-white text-black hover:bg-gray-200" 
-                            : "bg-gray-400 text-gray-700 cursor-not-allowed"
-                        } h-[60px] text-[18px] font-semibold rounded-[8px]`}
-                        onClick={() => handleAddToCart(selectedProduct)}
+                        id="product-detail-buy-button"
+                        variant="buy" 
+                        className="w-[100%] mx-auto flex items-center justify-between px-4 bg-[#6366f1] hover:bg-blue-700 h-[60px] text-[18px] font-semibold rounded-[8px]"
+                        onClick={() => handleDirectPurchase(selectedProduct)}
                       >
-                        <span>Añadir a Carrito</span>
-                        <ShoppingCartIcon size={24} />
+                        <span>Comprar</span>
+                        <span>s/{formatPrice(calculateDiscountedPrice(selectedProduct.price || 0, selectedProduct.discount))}</span>
                       </Button>
-                      {cartErrors[selectedProduct.id] && (
-                        <div className="text-red-500 mt-2 text-[10px] font-semibold text-center">
-                          {cartErrors[selectedProduct.id]}
-                        </div>
-                      )}
-                      {detailStockError && (
-                        <div className="text-red-500 mt-2 text-[10px] font-semibold text-center">
-                          {detailStockError}
-                        </div>
-                      )}
-                      {selectedProduct && !(cart.isOpen && cart.items.length > 0) ? (
-                        <Button 
-                          id="product-detail-buy-button"
-                          variant="buy" 
-                          className="w-[100%] mx-auto flex items-center justify-between px-4 bg-blue-600 hover:bg-blue-700 h-[60px] text-[18px] font-semibold rounded-[8px]"
-                          onClick={() => handleDirectPurchase(selectedProduct)}
-                        >
-                          <span>Comprar</span>
-                          <span>s/{formatPrice(calculateDiscountedPrice(selectedProduct.price || 0, selectedProduct.discount))}</span>
-                        </Button>
-                      ) : null}
-                    </div>
+                    ) : null}
                   </div>
                 </div>
-                
+                {/* Carrito si está abierto */}
                 {cart.isOpen && cart.items.length > 0 && (
                   <div className="mt-2 mb-2">
                     <div className="bg-black border-2 border-white rounded-[16px] w-full mx-auto shadow-lg overflow-hidden flex flex-col">
@@ -1161,7 +2306,7 @@ const ProductSelection: React.FC = () => {
                                 />
                               </div>
                               <div className="flex-1 ml-2">
-                                <div className="text-gray-400 uppercase text-[12px] font-[400]">{item.product.brand}</div>
+                                <div className="text-gray-400 uppercase text-[12px] font-[400]">{item.product.FS_SABOR || 'Sin sabor'}</div>
                                 <div className="text-white text-[10px] font-[700]">{item.product.name}</div>
                                 <div className="text-white text-[10px] font-[700]">{item.product.puffs ? `${item.product.puffs.toLocaleString()} Puffs` : ''}</div>
                               </div>
@@ -1224,6 +2369,7 @@ const ProductSelection: React.FC = () => {
         onApplyFilters={handleApplyFilters}
         initialFilters={activeFilters}
         filterCategories={filterCategories} /* Pass the dynamic filter categories */
+        machineCode="000003" /* Pass the current machine code */
       />
 
       {/* Camera Modal */}
@@ -1249,6 +2395,10 @@ const ProductSelection: React.FC = () => {
           window.sessionStorage.setItem('currentTransactionId', transactionId.toString());
           handlePaymentComplete();
         }}
+        onPaymentTransactionIdReceived={(paymentTransactionId) => {
+          console.log('Payment transaction ID received:', paymentTransactionId);
+          setPaymentTransactionId(paymentTransactionId);
+        }}
         onFeedbackSubmitted={handleFeedbackSubmitted}
         onComplete={handleFeedbackComplete}
         onRetryPayment={() => {
@@ -1256,6 +2406,8 @@ const ProductSelection: React.FC = () => {
           setIsPaymentModalOpen(false);
           setTimeout(() => setIsPaymentModalOpen(true), 100);
         }}
+        onResetToSplashScreen={resetToSplashScreen}
+        onPauseTimer={setIsTimerPaused}
         cartTotal={calculateCartTotal(cart.items)}
         cartItems={cart.items.map(item => ({
           productId: item.product.id,
@@ -1271,14 +2423,18 @@ const ProductSelection: React.FC = () => {
         <>
           {/* Main footer - show when no product detail is visible */}
           {!selectedProduct && (
-            <div id="main-footer" className="fixed bottom-16 left-1/2 -translate-x-1/2 w-[90%] z-50">
+            <div 
+              id="main-footer" 
+              className="fixed bottom-16 left-1/2 -translate-x-1/2 w-[90%] z-50"
+              onClick={handleScreenInteraction}
+            >
               <div className="flex items-center justify-between p-2 bg-black text-white rounded-[16px] shadow-lg h-[105px] border-2 border-[#4C4C4C]">
                 <div className="flex items-center gap-2">
                   <div className="w-24 h-24 flex items-center justify-center">
                     <img src={vapeBoxLogo} alt="Vape Box" className="w-full h-full object-contain" />
                   </div>
                   <div style={{lineHeight: '1.75rem'}}>
-                    <p className="text-[12px] font-akira font-bold text-[#00FF66]">ATENCION AL CLIENTE AL</p>
+                    <p className="text-[12px] font-akira font-bold text-[#FFFFFF]">ATENCION AL CLIENTE AL</p>
                     <p className="text-[32px] font-akira font-bold">908 936 036</p>
                   </div>
                 </div>
@@ -1296,14 +2452,18 @@ const ProductSelection: React.FC = () => {
 
           {/* Compact footer - show when product detail is visible */}
           {selectedProduct && (
-            <div id="compact-footer" className="fixed bottom-6 right-6 w-[410px] z-50">
+            <div 
+              id="compact-footer" 
+              className="fixed bottom-6 right-6 w-[410px] z-50"
+              onClick={handleScreenInteraction}
+            >
               <div className="flex items-center justify-between p-3 bg-black text-white rounded-[16px] shadow-lg border-2 border-[#4C4C4C]">
                 <div className="flex items-center gap-2">
                   <div className="w-12 h-12 flex items-center justify-center">
                     <img src={vapeBoxLogo} alt="Vape Box" className="w-full h-full object-contain" />
                   </div>
                   <div style={{lineHeight: '1.2rem'}}>
-                    <p className="text-[10px] font-akira font-semibold text-[#00FF66]">ATENCION AL CLIENTE AL</p>
+                    <p className="text-[10px] font-akira font-semibold text-[#FFFFFF]">ATENCION AL CLIENTE AL</p>
                     <p className="text-[22px] font-akira font-bold">908 936 036</p>
                   </div>
                 </div>
@@ -1320,16 +2480,7 @@ const ProductSelection: React.FC = () => {
       )}
 
       {/* Empty state image & RappiModal, DocumentScanModal, ErrorModal */}
-      {filteredProducts.length === 0 && !loading && (
-        <div className="fixed bottom-0 left-0 right-0 flex justify-center pointer-events-none">
-          <img 
-            src={emptyStateNoFilters} 
-            alt="Empty state" 
-            className="max-h-[30vh] w-auto object-contain opacity-80"
-            style={{ objectPosition: '50% 100%' }}
-          />
-        </div>
-      )}
+      {/* La imagen de estado vacío en la esquina inferior izquierda ha sido eliminada. */}
       <RappiModal
         isOpen={isRappiModalOpen}
         onClose={() => setIsRappiModalOpen(false)}
@@ -1344,35 +2495,200 @@ const ProductSelection: React.FC = () => {
         cameraFaceImage={capturedFaceImage} 
       />
       {showErrorModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
-          <div className="bg-white p-8 rounded-lg text-black">
-            <h2 className="text-2xl font-bold mb-4">Error al procesar la compra</h2>
-            <p>{error || 'Ha ocurrido un error al procesar la compra. Por favor, inténtelo más tarde.'}</p>
+        <ErrorModal
+          abierto={showErrorModal}
+          mensaje={error || "Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo."}
+          onReintentar={() => {
+            setShowErrorModal(false);
+            resetToSplashScreen();
+          }}
+        />
+      )}
+      {showSuccessModal && (
+        <SuccessModal
+          onFeedbackSubmitted={handleFeedbackSubmitted}
+          onTimeout={handleSuccessModalTimeout}
+          totalProducts={dispensingState.totalProducts}
+          currentProductIndex={dispensingState.currentProductIndex}
+          currentProductName={dispensingState.currentProductName}
+          onPauseTimer={setIsTimerPaused}
+          arduinoStatus={arduinoStatus}
+          onArduinoStatusChange={handleArduinoStatusChange}
+        />
+      )}
+
+      {/* Feedback Detail Modal */}
+      {showFeedbackDetail && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+          <FeedbackDetailModal
+            onDetailedFeedback={handleDetailedFeedback}
+            onClose={handleFeedbackDetailClose}
+            onComplete={handleFeedbackComplete}
+            onResetToSplashScreen={resetToSplashScreen}
+          />
+        </div>
+      )}
+
+      {/* Feedback Thank You Modal */}
+      {showFeedbackThankYou && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+          <FeedbackThankYouModal
+            onClose={handleFeedbackThankYouClose}
+            onResetToSplashScreen={resetToSplashScreen}
+            paymentTransactionId={paymentTransactionId}
+            feedbackType={lastFeedbackType || undefined} // 🔍 CORREGIR: convertir null a undefined
+            feedbackReason={lastFeedbackReason}
+          />
+        </div>
+      )}
+
+      {/* Test Dispense Modal */}
+      <TestDispenseModal
+        isOpen={isTestDispenseModalOpen}
+        onClose={() => setIsTestDispenseModalOpen(false)}
+        products={dbProducts}
+        dispenseProductDb={dispenseProductDb}
+        dispenseProduct={dispenseProduct}
+      />
+
+      {/* Test SuccessModal Simulation Modal */}
+      {showSimulationModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+          <div className="bg-white rounded-2xl shadow-lg p-8 flex flex-col items-center w-[480px]">
+            <h2 className="text-2xl font-bold text-orange-600 text-center mb-6">
+              🎯 SIMULACIÓN DEL SUCCESSMODAL
+            </h2>
+            
+            <p className="text-gray-600 text-center mb-6">
+              Selecciona el tipo de simulación que quieres probar:
+            </p>
+            
+            <div className="grid grid-cols-2 gap-4 w-full">
+              {/* Opción 1: Un solo producto */}
+              <button
+                onClick={() => handleSimulationChoice(1)}
+                className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-4 px-6 rounded-xl transition-colors flex flex-col items-center"
+              >
+                <span className="text-2xl mb-2">1️⃣</span>
+                <span className="font-bold">UN SOLO PRODUCTO</span>
+                <span className="text-sm opacity-90">2.8 segundos</span>
+              </button>
+
+              {/* Opción 2: Múltiples productos */}
+              <button
+                onClick={() => handleSimulationChoice(2)}
+                className="bg-green-500 hover:bg-green-600 text-white font-semibold py-4 px-6 rounded-xl transition-colors flex flex-col items-center"
+              >
+                <span className="text-2xl mb-2">2️⃣</span>
+                <span className="font-bold">MÚLTIPLES PRODUCTOS</span>
+                <span className="text-sm opacity-90">5.6 segundos (2 productos)</span>
+              </button>
+
+              {/* Opción 3: Más productos */}
+              <button
+                onClick={() => handleSimulationChoice(3)}
+                className="bg-purple-500 hover:bg-purple-600 text-white font-semibold py-4 px-6 rounded-xl transition-colors flex flex-col items-center"
+              >
+                <span className="text-2xl mb-2">3️⃣</span>
+                <span className="font-bold">MÁS PRODUCTOS</span>
+                <span className="text-sm opacity-90">8.4 segundos (3 productos)</span>
+              </button>
+
+              {/* Opción 4: Muchos productos */}
+              <button
+                onClick={() => handleSimulationChoice(4)}
+                className="bg-red-500 hover:bg-red-600 text-white font-semibold py-4 px-6 rounded-xl transition-colors flex flex-col items-center"
+              >
+                <span className="text-2xl mb-2">4️⃣</span>
+                <span className="font-bold">MUCHOS PRODUCTOS</span>
+                <span className="text-sm opacity-90">14 segundos (5 productos)</span>
+              </button>
+            </div>
+
+            {/* Botón de cerrar */}
             <button
-              onClick={() => {
-                setShowErrorModal(false);
-                resetToSplashScreen();
-              }}
-              className="mt-4 px-4 py-2 bg-blue-500 text-white rounded"
+              onClick={() => setShowSimulationModal(false)}
+              className="mt-6 bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-6 rounded-lg transition-colors"
             >
-              Volver al inicio
+              ❌ Cancelar
             </button>
           </div>
         </div>
       )}
 
-      {/* Test SuccessModal */}
-      {showSuccessModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <SuccessModal 
-            onFeedbackSubmitted={(feedback) => {
-              console.log('Test feedback submitted:', feedback);
-              setShowSuccessModal(false);
-            }}
-            onTimeout={handleSuccessModalTimeout}
-          />
+      {/* Test Buttons - Hidden for production */}
+      {/* 
+      <TestDispenseButton />
+      <TestSuccessButton />
+      <TestMultiButton />
+      <TestFeedbackButton />
+      <TestRealPaymentButton />
+      <TestPaymentModalButton />
+      <TestSuccessfulPOSButton />
+      <TestTimerExpirationButton />
+      <TestMultipleDispenseButton />
+      <TestArduinoIntegrationButton />
+      */}
+
+      {/* Test2Buttons Component - Hidden for production */}
+      {/* 
+      <div className="fixed bottom-4 right-4 z-50">
+        <div className="bg-white rounded-lg shadow-lg p-4 border-2 border-blue-500">
+          <h3 className="text-lg font-bold text-blue-600 mb-3 text-center">Test2Buttons</h3>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={handleTestSingleProduct}
+              className="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded transition-colors"
+            >
+              🧪 Test Producto Único
+            </button>
+            <button
+              onClick={handleTestMultipleProducts}
+              className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded transition-colors"
+            >
+              🧪 Test Múltiples Productos
+            </button>
+          </div>
         </div>
-      )}
+      </div>
+      */}
+      
+      {/* Test Pago Exitoso Component - HIDDEN FOR PRODUCTION */}
+      {/* 
+      <div className="fixed bottom-4 left-4 z-50">
+        <div className="bg-white rounded-lg shadow-lg p-4 border-2 border-green-500">
+          <h3 className="text-lg font-bold text-green-600 mb-3 text-center">Test Pago Exitoso</h3>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={handleTestPagoExitoso}
+              className="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded transition-colors"
+            >
+              💳 Simular Pago Exitoso
+            </button>
+          </div>
+        </div>
+      </div>
+      */}
+
+      {/* Test SuccessModal Simulation Component - HIDDEN FOR PRODUCTION */}
+      {/* 
+      <div className="fixed bottom-4 right-4 z-50">
+        <div className="bg-white rounded-lg shadow-lg p-4 border-2 border-orange-500">
+          <h3 className="text-lg font-bold text-orange-600 mb-3 text-center">Test SuccessModal Sim</h3>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={handleTestSuccessModalSimulation}
+              className="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded transition-colors"
+            >
+              🎯 Simular SuccessModal
+            </button>
+          </div>
+        </div>
+      </div>
+      */}
+      
+
+
     </main>
   );
 };

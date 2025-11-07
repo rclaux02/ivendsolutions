@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import FeedbackThankYouModal from './FeedbackThankYouModal';
 
 interface FeedbackDetailModalProps {
@@ -18,6 +18,33 @@ const FeedbackDetailModal: React.FC<FeedbackDetailModalProps> = ({
 }) => {
   const [showThankYou, setShowThankYou] = useState(false);
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
+  const [timeLeft, setTimeLeft] = useState(20); // 20 second timer
+
+  // Auto-close after 20 seconds of inactivity - NO DEPENDENCIAS EXTERNAS
+  useEffect(() => {
+    if (!showThankYou) { // Only run timer when not showing thank you modal
+      const timer = setInterval(() => {
+        setTimeLeft((prevTime) => {
+          if (prevTime <= 1) {
+            clearInterval(timer);
+            console.log('[FeedbackDetailModal] 20-second timer expired, closing modal and going to splash');
+            
+            // Call onResetToSplashScreen if provided
+            if (onResetToSplashScreen) {
+              onResetToSplashScreen();
+            }
+            
+            // Close the modal
+            onClose();
+            return 0;
+          }
+          return prevTime - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }
+  }, [showThankYou]); // ✅ SOLO showThankYou como dependencia
 
   // Standard feedback options based on variant (for analytics only)
   const feedbackOptions = variant === 'rappi' 
@@ -30,8 +57,8 @@ const FeedbackDetailModal: React.FC<FeedbackDetailModalProps> = ({
         'Otros'
       ]
     : [
-        'No tenían mi vape',
-        'Falla el reconocimiento facial',
+        'No tenia mi producto',
+        'Producto sin refrigeración',
         'No funcionaba mi método de pago',
         'La máquina se trababa mucho',
         'Simplemente no me gustó',
@@ -93,8 +120,8 @@ const FeedbackDetailModal: React.FC<FeedbackDetailModalProps> = ({
             Cuéntanos por qué
           </h2>
           <p className="text-white text-[18px] font-semibold mb-4 px-4">
-            Tu opinión es importante para nosotros. Ayúdanos a mejorar
-            seleccionando el motivo de tu experiencia.
+          Si nos dices que salio mal en esta experiencia, de esa
+          manera podremos mejorar para la proxima vez.
           </p>
         </div>
 

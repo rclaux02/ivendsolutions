@@ -1,5 +1,6 @@
-import { withConnection } from '../dbConnection';
-import { RowDataPacket } from 'mysql2/promise';
+import { createConnectionPool } from '../dbConnection';
+import { getSmartDbConfig } from '../dbConfig';
+import { RowDataPacket, PoolConnection } from 'mysql2/promise';
 
 /**
  * Interface representing a product from the database
@@ -31,7 +32,16 @@ export interface DatabaseProduct extends RowDataPacket {
 }
 
 /**
- * Interface for the product model used in the UI
+ * Interface representing a product slot mapping
+ */
+export interface SlotMapping extends RowDataPacket {
+  product_id: number;
+  slot_id: string;
+  quantity: number;
+}
+
+/**
+ * Interface for the product model used in the frontend
  */
 export interface ProductModel {
   id: string;
@@ -40,21 +50,33 @@ export interface ProductModel {
   price: number;
   image: string;
   puffs: number;
-  slot_id: string; // This will be the first available slot or '' if none
-  slot_quantity: number; // This will be the total quantity across all slots
+  slot_id: string;
+  slot_quantity: number;
   discount?: string;
-  has_stock: boolean; // Whether this product has any stock available
   FS_PORCENTAJE_NICOTINA?: number;
   FS_SABOR?: string;
+  FS_DES_PROD?: string;
+  FS_DES_PROD_CONT?: string;
+  FS_DES_PROD_DETA?: string;
+  FS_DIMENSION?: string;
+  FS_TIP_CARGA?: string;
+  has_stock: boolean;
 }
 
 /**
- * Interface for slot mapping from the database
+ * Custom connection function that uses smart database configuration
  */
-export interface SlotMapping extends RowDataPacket {
-  slot_id: string;
-  quantity: number;
-  product_id: number;
+async function withSmartConnection<T>(callback: (connection: PoolConnection) => Promise<T>): Promise<T> {
+  const smartConfig = getSmartDbConfig();
+  const pool = createConnectionPool(smartConfig);
+  const connection = await pool.getConnection();
+  
+  try {
+    return await callback(connection);
+  } finally {
+    connection.release();
+    pool.end();
+  }
 }
 
 /**
@@ -64,37 +86,17 @@ export interface SlotMapping extends RowDataPacket {
  */
 export async function getProductsForMachine(machineCode: string): Promise<ProductModel[]> {
   try {
-    const [rows] = await withConnection<[DatabaseProduct[], any]>(async (connection) => {
-      // Query products for the specified machine with total quantities
+    const [rows] = await withSmartConnection<[DatabaseProduct[], any]>(async (connection) => {
       return connection.query(`
         SELECT 
-          p.FS_ID,
-          p.FS_EMP,
-          p.FS_SEDE,
-          p.FS_LOCAL,
-          p.FN_COD_PROD,
-          p.FS_DES_PROD,
-          p.FS_SKU,
-          p.FS_STOCK,
-          p.FN_COD_LIS_PREC,
-          p.FS_ALMA,
-          p.FS_NOM_USU_CRE,
-          p.FD_FEC_CRE,
-          p.FD_FEC_MOD,
-          p.FX_IMG,
-          p.FN_PREC_VTA,
-          p.FX_IMG2,
-          p.FS_INFO,
-          p.FS_DSCTO,
-          p.FS_MARCA,
-          p.FS_PUFFS,
-          p.FS_PORCENTAJE_NICOTINA,
-          p.FS_SABOR,
-          COALESCE(SUM(sm.quantity), 0) as total_quantity
+          p.*,
+          SUM(sm.QUANTITY) as total_quantity
         FROM TA_PRODUCTO p
-        LEFT JOIN TA_PRODUCT_SLOT_MAPPING sm ON p.FS_ID = sm.product_id
-        WHERE p.FS_LOCAL = ?
+        INNER JOIN TA_PRODUCT_SLOT_MAPPING sm
+          ON p.FS_ID = sm.PRODUCT_ID
+        WHERE sm.MACHINE_CODE = ?
         GROUP BY p.FS_ID
+        HAVING SUM(sm.QUANTITY) > 0
       `, [machineCode]);
     });
 
@@ -112,7 +114,8 @@ export async function getProductsForMachine(machineCode: string): Promise<Produc
 
     // Get slot mappings for all products to determine primary slots
     const productSlotMappings = await getSlotMappingsForProducts(
-      rows.map(row => row.FS_ID.toString())
+      rows.map(row => row.FS_ID.toString()),
+      machineCode
     );
 
     // Map database rows to the ProductModel interface
@@ -146,6 +149,11 @@ export async function getProductsForMachine(machineCode: string): Promise<Produc
         discount: row.FS_DSCTO,
         FS_PORCENTAJE_NICOTINA: row.FS_PORCENTAJE_NICOTINA,
         FS_SABOR: row.FS_SABOR,
+        FS_DES_PROD: row.FS_DES_PROD,
+        FS_DES_PROD_CONT: row.FS_DES_PROD_CONT,
+        FS_DES_PROD_DETA: row.FS_DES_PROD_DETA,
+        FS_DIMENSION: row.FS_DIMENSION,
+        FS_TIP_CARGA: row.FS_TIP_CARGA,
         has_stock: totalQuantity > 0
       };
     });
@@ -162,7 +170,7 @@ export async function getProductsForMachine(machineCode: string): Promise<Produc
  */
 export async function getProductByCode(productCode: string): Promise<ProductModel | null> {
   try {
-    const [rows] = await withConnection<[DatabaseProduct[], any]>(async (connection) => {
+    const [rows] = await withSmartConnection<[DatabaseProduct[], any]>(async (connection) => {
       return connection.query(`
         SELECT 
           p.FS_ID,
@@ -187,6 +195,10 @@ export async function getProductByCode(productCode: string): Promise<ProductMode
           p.FS_PUFFS,
           p.FS_PORCENTAJE_NICOTINA,
           p.FS_SABOR,
+          p.FS_DES_PROD_CONT,
+          p.FS_DES_PROD_DETA,
+          p.FS_DIMENSION,
+          p.FS_TIP_CARGA,
           COALESCE((
             SELECT SUM(quantity) 
             FROM TA_PRODUCT_SLOT_MAPPING 
@@ -216,15 +228,15 @@ export async function getProductByCode(productCode: string): Promise<ProductMode
 
     // Get slot mappings for this product
     const productId = row.FS_ID.toString();
-    const slotMappings = await getSlotMappingsForProducts([productId]);
+    const slotMappings = await getSlotMappingsForProducts([productId], '001'); // Default machine code for getProductByCode
     const productSlots = slotMappings[productId] || [];
     const firstSlotWithStock = productSlots.length > 0 ? productSlots[0].slot_id : '';
     const totalQuantity = row.total_quantity || 0;
-    
+
     return {
       id: productId,
       name: row.FS_DES_PROD,
-      brand: row.FS_MARCA || row.FS_ALMA || 'Unknown', // Use new FS_MARCA field, fallback to FS_ALMA
+      brand: row.FS_MARCA || row.FS_ALMA || 'Unknown',
       price: row.FN_PREC_VTA,
       image: imageUrl,
       puffs: row.FS_PUFFS || 0,
@@ -233,6 +245,11 @@ export async function getProductByCode(productCode: string): Promise<ProductMode
       discount: row.FS_DSCTO,
       FS_PORCENTAJE_NICOTINA: row.FS_PORCENTAJE_NICOTINA,
       FS_SABOR: row.FS_SABOR,
+      FS_DES_PROD: row.FS_DES_PROD,
+      FS_DES_PROD_CONT: row.FS_DES_PROD_CONT,
+      FS_DES_PROD_DETA: row.FS_DES_PROD_DETA,
+      FS_DIMENSION: row.FS_DIMENSION,
+      FS_TIP_CARGA: row.FS_TIP_CARGA,
       has_stock: totalQuantity > 0
     };
   } catch (error) {
@@ -244,22 +261,24 @@ export async function getProductByCode(productCode: string): Promise<ProductMode
 /**
  * Get slot mappings for a list of product IDs
  * @param productIds Array of product IDs
+ * @param machineCode The machine code to filter by
  * @returns Promise with a map of product ID to slot mappings
  */
-async function getSlotMappingsForProducts(productIds: string[]): Promise<Record<string, SlotMapping[]>> {
+async function getSlotMappingsForProducts(productIds: string[], machineCode: string): Promise<Record<string, SlotMapping[]>> {
   if (!productIds.length) {
     return {};
   }
 
   try {
-    const [rows] = await withConnection<[SlotMapping[], any]>(async (connection) => {
+    const [rows] = await withSmartConnection<[SlotMapping[], any]>(async (connection) => {
       const placeholders = productIds.map(() => 'CAST(? AS UNSIGNED)').join(',');
       return connection.query<SlotMapping[]>(
         `SELECT product_id, slot_id, quantity 
          FROM TA_PRODUCT_SLOT_MAPPING 
          WHERE product_id IN (${placeholders})
+         AND machine_code = ?
          AND quantity > 0`,
-        productIds
+        [...productIds, machineCode]
       );
     });
 
@@ -282,22 +301,59 @@ async function getSlotMappingsForProducts(productIds: string[]): Promise<Record<
 }
 
 /**
+ * Get total available inventory for a product across all slots in a specific machine
+ * @param productId The product ID to check
+ * @param machineCode The machine code to filter by
+ * @returns Promise with total available quantity
+ */
+export async function getTotalProductInventory(productId: string, machineCode?: string): Promise<number> {
+  try {
+    const currentMachineCode = machineCode || '001';
+    console.log(`[DB] Getting total inventory for product ID: ${productId}, machine: ${currentMachineCode}`);
+    
+    const [rows] = await withSmartConnection<[any[], any]>(async (connection) => {
+      return connection.query(
+        `SELECT SUM(quantity) as total_quantity 
+         FROM TA_PRODUCT_SLOT_MAPPING 
+         WHERE product_id = CAST(? AS UNSIGNED) AND machine_code = ? AND quantity > 0`,
+        [productId, currentMachineCode]
+      );
+    });
+    
+    if (!rows || rows.length === 0 || !rows[0].total_quantity) {
+      console.log(`[DB] No inventory found for product ${productId} in machine ${currentMachineCode}`);
+      return 0;
+    }
+    
+    const totalQuantity = Number(rows[0].total_quantity);
+    console.log(`[DB] Total inventory for product ${productId} in machine ${currentMachineCode}: ${totalQuantity}`);
+    
+    return totalQuantity;
+  } catch (error) {
+    console.error('[DB] Error getting total product inventory:', error);
+    return 0;
+  }
+}
+
+/**
  * Get all available slot mappings for a product, sorted by quantity in descending order
  * @param productId The product ID (FS_ID)
+ * @param machineCode The machine code to filter by (optional)
  * @returns Promise with an array of slot mappings
  */
-export async function getAllAvailableSlotMappings(productId: string): Promise<SlotMapping[]> {
+export async function getAllAvailableSlotMappings(productId: string, machineCode?: string): Promise<SlotMapping[]> {
   try {
-    console.log(`[DB] Fetching all available slots for product ID: ${productId}`);
+    const currentMachineCode = machineCode || '001';
+    console.log(`[DB] Fetching all available slots for product ID: ${productId}, machine: ${currentMachineCode}`);
     
     // Get all slots for this product with quantity > 0
-    const [rows] = await withConnection<[SlotMapping[], any]>(async (connection) => {
+    const [rows] = await withSmartConnection<[SlotMapping[], any]>(async (connection) => {
       return connection.query<SlotMapping[]>(
         `SELECT product_id, slot_id, quantity 
          FROM TA_PRODUCT_SLOT_MAPPING 
-         WHERE product_id = CAST(? AS UNSIGNED) AND quantity > 0
+         WHERE product_id = CAST(? AS UNSIGNED) AND machine_code = ? AND quantity > 0
          ORDER BY quantity DESC`,
-        [productId]
+        [productId, currentMachineCode]
       );
     });
     
@@ -319,90 +375,65 @@ export async function getAllAvailableSlotMappings(productId: string): Promise<Sl
 }
 
 /**
- * Get available slot mapping for a product
- * @param productId The product ID (FS_ID)
- * @returns Promise with the slot mapping or null if not found
- */
-export async function getAvailableSlotMapping(productId: string): Promise<SlotMapping | null> {
-  try {
-    // Get all slots for this product, sorted by quantity
-    const productSlots = await getAllAvailableSlotMappings(productId);
-    
-    // Return the first available slot, or null if no slots available
-    return productSlots.length > 0 ? productSlots[0] : null;
-  } catch (error) {
-    console.error('Error getting slot mapping:', error);
-    throw error;
-  }
-}
-
-/**
- * Dispense a product and update its quantity in the database
- * @param productId The product ID (FS_ID)
- * @param slotId Optional - if provided, dispense from this specific slot
- * @param quantity Optional - number of items to dispense, defaults to 1
- * @returns Promise with the dispensing result
+ * Dispense a product from a specific slot or find the best available slot
+ * @param productId The product ID to dispense
+ * @param slotId Optional specific slot ID to dispense from
+ * @param quantity Number of items to dispense (default: 1)
+ * @param machineCode The machine code to filter by (optional)
+ * @returns Promise with dispense result
  */
 export async function dispenseProductFromSlot(
   productId: string, 
   slotId?: string,
-  quantity: number = 1
-): Promise<{ success: boolean; message?: string; slotId?: string; quantityDispensed?: number }> {
+  quantity: number = 1,
+  machineCode?: string
+): Promise<{ 
+  success: boolean; 
+  message?: string; 
+  slotId?: string; 
+  quantityDispensed?: number;
+  usedSlots?: Array<{slotId: string, quantityDispensed: number}>;
+  isMultiSlot?: boolean;
+}> {
   try {
-    console.log(`[DB] Starting dispense operation - Product ID: ${productId}, Requested quantity: ${quantity}`);
+    const currentMachineCode = machineCode || '001';
+    console.log(`[DB] Dispensing ${quantity} units of product ${productId} from slot ${slotId || 'auto'}, machine: ${currentMachineCode}`);
     
-    // Validate inputs
-    if (!productId) {
-      console.error('[DB] Invalid product ID:', productId);
-      return { success: false, message: 'Invalid product ID' };
-    }
-    
-    // If slotId is provided, dispense from that specific slot
+    // If a specific slot is provided, try to dispense from it first
     if (slotId) {
-      console.log(`[DB] Dispensing from specific slot ${slotId}`);
+      console.log(`[DB] Attempting to dispense from specified slot: ${slotId}`);
       
-      // Verify the slot has available quantity
-      const [rows] = await withConnection(async (connection) => {
+      // Check if the slot has enough inventory
+      const [slotRows] = await withSmartConnection<[SlotMapping[], any]>(async (connection) => {
         return connection.query<SlotMapping[]>(
-          `SELECT slot_id, quantity 
+          `SELECT product_id, slot_id, quantity 
            FROM TA_PRODUCT_SLOT_MAPPING 
-           WHERE product_id = CAST(? AS UNSIGNED) AND slot_id = ? AND quantity > 0`,
-          [productId, slotId]
+           WHERE product_id = CAST(? AS UNSIGNED) AND slot_id = ? AND machine_code = ? AND quantity >= ?`,
+          [productId, slotId, currentMachineCode, quantity]
         );
       });
-
-      console.log(`[DB] Slot query result:`, rows);
-
-      if (!rows || rows.length === 0) {
-        console.error(`[DB] No available quantity found for product ${productId} in slot ${slotId}`);
-        return {
-          success: false,
-          message: `No available quantity found for product ${productId} in slot ${slotId}`
-        };
-      }
-
-      // Determine actual quantity to dispense (limited by available stock)
-      const availableQuantity = rows[0].quantity;
-      const quantityToDispense = Math.min(quantity, availableQuantity);
       
-      console.log(`[DB] Available quantity: ${availableQuantity}, Will dispense: ${quantityToDispense}`);
-
-      if (quantityToDispense <= 0) {
-        console.error(`[DB] Cannot dispense ${quantityToDispense} items (must be > 0)`);
+      if (!slotRows || slotRows.length === 0) {
+        console.log(`[DB] Slot ${slotId} doesn't have enough inventory for product ${productId}`);
         return {
           success: false,
-          message: `Cannot dispense ${quantityToDispense} items (must be > 0)`
+          message: `Insufficient inventory in slot ${slotId} for product ${productId}`
         };
       }
+      
+      const slotInfo = slotRows[0];
+      const quantityToDispense = Math.min(quantity, slotInfo.quantity);
+      
+      console.log(`[DB] Slot ${slotId} has ${slotInfo.quantity} units, dispensing ${quantityToDispense}`);
 
       // Update the quantity in the database
       try {
-        const updateResult = await withConnection(async (connection) => {
+        const updateResult = await withSmartConnection(async (connection) => {
           return connection.query(
             `UPDATE TA_PRODUCT_SLOT_MAPPING 
              SET quantity = quantity - ?, last_updated = NOW() 
-             WHERE product_id = CAST(? AS UNSIGNED) AND slot_id = ? AND quantity >= ?`,
-            [quantityToDispense, productId, slotId, quantityToDispense]
+             WHERE product_id = CAST(? AS UNSIGNED) AND slot_id = ? AND machine_code = ? AND quantity >= ?`,
+            [quantityToDispense, productId, slotId, currentMachineCode, quantityToDispense]
           );
         });
         
@@ -430,73 +461,105 @@ export async function dispenseProductFromSlot(
         slotId: slotId,
         quantityDispensed: quantityToDispense
       };
-    } 
-    // If no slotId provided, find the best slot with most items
-    else {
-      console.log(`[DB] Auto-selecting best slot for product ${productId}`);
+    } else {
+      // No specific slot provided, implement multi-slot dispensing
+      console.log(`[DB] No specific slot provided, implementing multi-slot dispensing for product ${productId}`);
       
-      // Get all available slots for this product, sorted by quantity
-      const allSlots = await getAllAvailableSlotMappings(productId);
-      console.log(`[DB] Available slots:`, allSlots);
+      // Get all available slots for this product in the current machine
+      const availableSlots = await getAllAvailableSlotMappings(productId, currentMachineCode);
       
-      if (allSlots.length === 0) {
-        console.error(`[DB] No available slots found for product ${productId}`);
+      if (availableSlots.length === 0) {
+        console.log(`[DB] No slots with inventory found for product ${productId} in machine ${currentMachineCode}`);
         return {
           success: false,
-          message: `No available stock found for product ${productId}`
+          message: `No inventory available for product ${productId} in machine ${currentMachineCode}`
         };
       }
-
-      // Select the slot with the most items
-      const bestSlot = allSlots[0];
-      const targetSlotId = bestSlot.slot_id;
-      const availableQuantity = bestSlot.quantity;
-      const quantityToDispense = Math.min(quantity, availableQuantity);
       
-      console.log(`[DB] Selected slot ${targetSlotId} with ${availableQuantity} units available. Will dispense: ${quantityToDispense}`);
-
-      if (quantityToDispense <= 0) {
-        console.error(`[DB] Cannot dispense ${quantityToDispense} items (must be > 0)`);
+      // Calculate total available quantity across all slots
+      const totalAvailableQuantity = availableSlots.reduce((sum, slot) => sum + slot.quantity, 0);
+      console.log(`[DB] Total available quantity for product ${productId} across all slots: ${totalAvailableQuantity}`);
+      
+      if (totalAvailableQuantity < quantity) {
+        console.log(`[DB] Insufficient total inventory: ${totalAvailableQuantity} < ${quantity}`);
         return {
           success: false,
-          message: `Cannot dispense ${quantityToDispense} items (must be > 0)`
+          message: `Insufficient total inventory for ${quantity} units of product ${productId}. Available: ${totalAvailableQuantity} units`
         };
       }
-
-      // Update the quantity in the database
+      
+      // Implement multi-slot dispensing
+      let remainingQuantity = quantity;
+      let totalDispensed = 0;
+      const usedSlots: Array<{slotId: string, quantityDispensed: number}> = [];
+      
+      // Sort slots by quantity (highest first) for optimal dispensing
+      const sortedSlots = [...availableSlots].sort((a, b) => b.quantity - a.quantity);
+      
+      for (const slot of sortedSlots) {
+        if (remainingQuantity <= 0) break;
+        
+        const quantityToDispenseFromSlot = Math.min(remainingQuantity, slot.quantity);
+        console.log(`[DB] Dispensing ${quantityToDispenseFromSlot} units from slot ${slot.slot_id} (has ${slot.quantity} units)`);
+        
       try {
-        const updateResult = await withConnection(async (connection) => {
+        const updateResult = await withSmartConnection(async (connection) => {
           return connection.query(
             `UPDATE TA_PRODUCT_SLOT_MAPPING 
              SET quantity = quantity - ?, last_updated = NOW() 
-             WHERE product_id = CAST(? AS UNSIGNED) AND slot_id = ? AND quantity >= ?`,
-            [quantityToDispense, productId, targetSlotId, quantityToDispense]
+               WHERE product_id = CAST(? AS UNSIGNED) AND slot_id = ? AND machine_code = ? AND quantity >= ?`,
+              [quantityToDispenseFromSlot, productId, slot.slot_id, currentMachineCode, quantityToDispenseFromSlot]
           );
         });
         
-        console.log(`[DB] Update result:`, updateResult);
-        
-        // Verify the update was successful by checking affected rows
+          // Verify the update was successful
         if (updateResult && updateResult[0] && (updateResult[0] as any).affectedRows === 0) {
-          console.error(`[DB] Update failed - no rows affected`);
+            console.error(`[DB] Update failed for slot ${slot.slot_id}`);
+            continue; // Try next slot
+          }
+          
+          // Update tracking variables
+          remainingQuantity -= quantityToDispenseFromSlot;
+          totalDispensed += quantityToDispenseFromSlot;
+          usedSlots.push({
+            slotId: slot.slot_id,
+            quantityDispensed: quantityToDispenseFromSlot
+          });
+          
+          console.log(`[DB] Successfully dispensed ${quantityToDispenseFromSlot} units from slot ${slot.slot_id}`);
+          
+        } catch (dbError) {
+          console.error(`[DB] Database update error for slot ${slot.slot_id}:`, dbError);
+          continue; // Try next slot
+        }
+      }
+      
+      if (totalDispensed === 0) {
+        console.error(`[DB] Failed to dispense any units from any slot`);
           return {
             success: false,
-            message: `Failed to update inventory for product ${productId} in slot ${targetSlotId}`
+          message: `Failed to dispense any units of product ${productId} from available slots`
           };
         }
-      } catch (dbError) {
-        console.error(`[DB] Database update error:`, dbError);
+      
+      if (totalDispensed < quantity) {
+        console.log(`[DB] Partially dispensed: ${totalDispensed}/${quantity} units`);
         return {
           success: false,
-          message: `Database error: ${dbError instanceof Error ? dbError.message : 'Unknown error'}`
+          message: `Partially dispensed: ${totalDispensed}/${quantity} units of product ${productId}`
         };
       }
 
-      console.log(`[DB] Successfully dispensed ${quantityToDispense} units from slot ${targetSlotId}`);
+      console.log(`[DB] Multi-slot dispensing completed successfully: ${totalDispensed} units from slots:`, 
+        usedSlots.map(slot => `${slot.slotId}(${slot.quantityDispensed})`).join(', ')
+      );
+      
       return { 
         success: true,
-        slotId: targetSlotId,
-        quantityDispensed: quantityToDispense
+        slotId: usedSlots[0].slotId, // Return first slot used for compatibility
+        quantityDispensed: totalDispensed,
+        usedSlots: usedSlots, // Add information about all slots used
+        isMultiSlot: usedSlots.length > 1 // Indicate if multiple slots were used
       };
     }
   } catch (error) {

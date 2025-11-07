@@ -59,7 +59,7 @@ const ShoppingCart: React.FC<ShoppingCartProps> = ({
                 />
               </div>
               <div className="flex-1">
-                <div className="text-xs text-gray-400 uppercase">{item.product.brand}</div>
+                <div className="text-xs text-gray-400 uppercase">{item.product.FS_SABOR || 'Sin sabor'}</div>
                 <div className="text-sm text-white font-medium">{item.product.name}</div>
                 <div className="text-xs text-gray-400">{item.product.puffs ? `${item.product.puffs.toLocaleString()} Puffs` : ''}</div>
                 

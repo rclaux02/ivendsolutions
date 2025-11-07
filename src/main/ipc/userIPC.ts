@@ -1,11 +1,28 @@
 import { ipcMain } from 'electron';
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
 import { app } from 'electron';
 import { FaceSdk, ImageSource } from '@regulaforensics/facesdk-webclient';
-import { withConnection } from '../database/dbConnection';
-import { RowDataPacket } from 'mysql2/promise';
+import { createConnectionPool } from '../database/dbConnection';
+import { getSmartDbConfig } from '../database/dbConfig';
+import { RowDataPacket, PoolConnection } from 'mysql2/promise';
 import { createClient } from '../database/operations/clientOperations';
+
+/**
+ * Custom connection function that uses smart database configuration
+ */
+async function withSmartConnection<T>(callback: (connection: PoolConnection) => Promise<T>): Promise<T> {
+  const smartConfig = getSmartDbConfig();
+  const pool = createConnectionPool(smartConfig);
+  const connection = await pool.getConnection();
+  
+  try {
+    return await callback(connection);
+  } finally {
+    connection.release();
+    pool.end();
+  }
+}
 
 // Define a type for the embedding data (adjust if needed)
 interface ClientEmbedding extends RowDataPacket {
@@ -98,30 +115,33 @@ export function registerUserIPC(): void {
   ipcMain.handle(UserChannel.GET_ALL_EMBEDDINGS, async () => {
     console.log('[UserIPC] Received get-all-face-embeddings request');
     try {
-      // Use withConnection utility
-      const rows = await withConnection<ClientEmbedding[]>(async (connection) => {
-        const [results] = await connection.query<ClientEmbedding[]>(
-          'SELECT FS_ID, FS_NOM, FACE_EMBEDDING FROM TA_CLI_VAPES WHERE FACE_EMBEDDING IS NOT NULL AND FACE_EMBEDDING != \'\''
+      // Use withSmartConnection utility
+      const rows = await withSmartConnection<ClientEmbedding[]>(async (connection) => {
+        const [results] = await connection.execute<ClientEmbedding[]>(
+          'SELECT id, name, FACE_EMBEDDING FROM TA_CLIENTE WHERE FACE_EMBEDDING IS NOT NULL AND FACE_EMBEDDING != ""'
         );
-        return results; // Return the actual rows
+        return results;
       });
 
-      // Log count and first 3 names
-      console.log(`[UserIPC] Found ${rows.length} clients with face embeddings.`);
-      if (rows.length > 0) {
-        const firstThreeNames = rows.slice(0, 3).map(row => row.FS_NOM).join(', ');
-        console.log(`[UserIPC] First 3 client names: ${firstThreeNames}`);
-      }
+      console.log(`[UserIPC] Retrieved ${rows.length} face embeddings from database`);
+      
+      // Parse the embeddings and return them
+      const embeddings = rows.map(row => ({
+        id: row.id,
+        name: row.name,
+        embedding: JSON.parse(row.FACE_EMBEDDING)
+      }));
 
-      return { 
-        success: true, 
-        data: rows 
+      return {
+        success: true,
+        embeddings
       };
-    } catch (error) {
-      console.error('[UserIPC] Error fetching face embeddings:', error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown database error' 
+    } catch (error: any) {
+      console.error('[UserIPC] Error getting face embeddings:', error);
+      return {
+        success: false,
+        error: error.message,
+        embeddings: []
       };
     }
   });

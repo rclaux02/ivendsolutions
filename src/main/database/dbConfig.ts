@@ -11,7 +11,14 @@ const dotenv = require('dotenv');
 dotenv.config({
   path: path.join(__dirname, '.env')
 });
-// Determine environment
+
+// Load environment variables from root .env file as fallback
+dotenv.config({
+  path: path.join(__dirname, '../../../../.env')
+});
+
+// Force consistent behavior between development and production
+// Always use production database for consistency
 const isProduction = process.env.NODE_ENV === 'production';
 
 /**
@@ -31,33 +38,22 @@ const devConfig: ConnectionOptions = {
 /**
  * Production configuration - used in deployed environment
  */
-// const prodConfig: ConnectionOptions = {
-//   host: process.env.PROD_DB_HOST || 'entity.pe',
-//   port: parseInt(process.env.PROD_DB_PORT || '3306', 10),
-//   database: process.env.PROD_DB_NAME || 'entitype_RFEnterprises',
-//   user: process.env.PROD_DB_USER || 'entitype_mago',
-//   password: process.env.PROD_DB_PASSWORD || '',  // Empty default for security
-//   waitForConnections: true,
-//   connectionLimit: 20, // Higher connection limit for production
-//   queueLimit: 0
-// };
-
 const prodConfig: ConnectionOptions = {
-  host: 'entity.pe',
-  port: 3306,
-  database: 'entitype_RFEnterprises',
-  user: 'entitype_Gerencia77',
-  password: 'Elbillon123$',  // Empty default for security
+  host: process.env.PROD_DB_HOST || 'entity.pe',
+  port: parseInt(process.env.PROD_DB_PORT || '3306', 10),
+  database: process.env.PROD_DB_NAME || 'entitype_RFEnterprises',
+  user: process.env.PROD_DB_USER || 'entitype_Gerencia77',
+  password: process.env.PROD_DB_PASSWORD || 'Elbillon123$',  // Password for entitype_Gerencia77
   waitForConnections: true,
   connectionLimit: 20, // Higher connection limit for production
   queueLimit: 0
 };
 
 /**
- * Standard MySQL connection configuration
- * Uses either production or development settings based on NODE_ENV
+ * Force production database for both environments to ensure consistency
+ * Development and production will use the same database configuration
  */
-export const dbConfig: ConnectionOptions = prodConfig;
+export const dbConfig: ConnectionOptions = prodConfig; // Always use production config
 
 /**
  * Create a database connection configuration with custom options
@@ -91,4 +87,13 @@ export function getDevelopmentDbConfig(options: Partial<ConnectionOptions> = {})
     ...devConfig,
     ...options
   };
+}
+
+/**
+ * Smart configuration that always uses production config for consistency
+ * Both development and production will behave identically
+ */
+export function getSmartDbConfig(options: Partial<ConnectionOptions> = {}): ConnectionOptions {
+  // Always use production config for both environments
+  return getProductionDbConfig(options);
 } 

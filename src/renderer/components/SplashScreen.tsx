@@ -1,148 +1,206 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useProductsContext } from '../hooks/useProductsContext';
 
-// Import assets directly
-// import dummySplashVideo_1 from '../assets/images/splash/dummySplashVideo_1.mp4';
-// import dummySplashVideo_2 from '../assets/images/splash/dummySplashVideo_2.mp4';
-import splashScreen_1 from '../assets/images/splash/splashScreen_1.png';
-import splashScreen_2 from '../assets/images/splash/splashScreen_2.png';
-import splashScreen_3 from '../assets/images/splash/splashScreen_3.png';
-
-// Define types for splash screen content
-type SplashScreenType = 'image' | 'video';
-
 interface SplashScreenContent {
-  type: SplashScreenType;
+  type: 'image' | 'video';
   src: string;
+  name: string;
+  order: number;
 }
 
 interface SplashScreenProps {
   onComplete: () => void;
 }
 
-// Define splash screen content in the specific sequence order
-const splashScreenSequence: SplashScreenContent[] = [
-  // { type: 'video', src: dummySplashVideo_1 },
-  // { type: 'video', src: dummySplashVideo_2 },
-  { type: 'image', src: splashScreen_1 },
-  { type: 'image', src: splashScreen_2 },
-  { type: 'image', src: splashScreen_3 },
-];
-
 const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
-  // Get the context with refetch function
   const { refetchProducts } = useProductsContext();
-  
-  // State to track the current item in the sequence
+  const [splashScreens, setSplashScreens] = useState<SplashScreenContent[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [currentSplash, setCurrentSplash] = useState<SplashScreenContent>(splashScreenSequence[0]);
+  const [currentSplash, setCurrentSplash] = useState<SplashScreenContent | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  
-  // Trigger refetch when splash screen is shown
+
+  // Load splash screens from database
   useEffect(() => {
-    console.log('[SplashScreen] Mounted, starting product fetch');
-    refetchProducts();
-    
-    // Add a global capture event listener
-    const captureEvents = (e: Event) => {
-      // This will catch events at the document level during capture phase
-      if (e.target && (e.target as HTMLElement).closest('.splash-screen-container')) {
-        e.stopPropagation();
+    const loadSplashScreens = async () => {
+      try {
+        setIsLoading(true);
+        console.log('[SplashScreen] Loading splash screens...');
+        
+        // Intentar cargar desde la base de datos primero
+        try {
+          const machineCode = localStorage.getItem('FS_COD_MAQ') || '001';
+          const splashScreens = await window.electron.ipcRenderer.invoke('splash:getActive', machineCode, '001', '001');
+          console.log('[SplashScreen] Database splash screens:', splashScreens);
+          
+          if (splashScreens && splashScreens.length > 0) {
+            console.log('[SplashScreen] Using database splash screens');
+            setSplashScreens(splashScreens);
+            setCurrentSplash(splashScreens[0]);
+          } else {
+            // Fallback to splash screens test
+            const defaultScreens: SplashScreenContent[] = [
+              {
+                type: 'image' as const,
+                src: './assets/images/splash/splashScreen_1.png',
+                name: 'Default Splash 1',
+                order: 1
+              },
+              {
+                type: 'image' as const,
+                src: './assets/images/splash/splashScreen_2.png',
+                name: 'Default Splash 2',
+                order: 2
+              },
+              {
+                type: 'image' as const,
+                src: './assets/images/splash/splashScreen_3.png',
+                name: 'Default Splash 3',
+                order: 3
+              }
+            ];
+            
+            console.log('[SplashScreen] Using static splash screens as fallback');
+            setSplashScreens(defaultScreens);
+            setCurrentSplash(defaultScreens[0]);
+          }
+        } catch (error) {
+          console.error('[SplashScreen] Error loading database splash screens:', error);
+          
+          // Fallback a splash screens estáticos en caso de error
+          const defaultScreens: SplashScreenContent[] = [
+            {
+              type: 'image' as const,
+              src: './assets/images/splash/splashScreen_1.png',
+              name: 'Default Splash 1',
+              order: 1
+            },
+            {
+              type: 'image' as const,
+              src: './assets/images/splash/splashScreen_2.png',
+              name: 'Default Splash 2',
+              order: 2
+            },
+            {
+              type: 'image' as const,
+              src: './assets/images/splash/splashScreen_3.png',
+              name: 'Default Splash 3',
+              order: 3
+            }
+          ];
+          
+          console.log('[SplashScreen] Using static splash screens due to error');
+          setSplashScreens(defaultScreens);
+          setCurrentSplash(defaultScreens[0]);
+        }
+        
+      } catch (error) {
+        console.error('[SplashScreen] Error loading splash screens:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
-    
-    document.addEventListener('mousedown', captureEvents, true);
-    document.addEventListener('touchstart', captureEvents, true);
-    
-    return () => {
-      document.removeEventListener('mousedown', captureEvents, true);
-      document.removeEventListener('touchstart', captureEvents, true);
-    };
+
+    loadSplashScreens();
+    refetchProducts();
   }, [refetchProducts]);
-  
-  // Function to advance to the next item in the sequence
-  const advanceToNextItem = () => {
-    const nextIndex = (currentIndex + 1) % splashScreenSequence.length;
-    setCurrentIndex(nextIndex);
-    setCurrentSplash(splashScreenSequence[nextIndex]);
-  };
-  
-  // Effect to handle the current splash screen item
+
+  // Handle splash screen sequence
   useEffect(() => {
+    if (!currentSplash || splashScreens.length === 0) return;
+
     // Clear any existing timers
     if (timerRef.current) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
-    
-    const currentItem = splashScreenSequence[currentIndex];
-    
-    if (currentItem.type === 'image') {
+
+    if (currentSplash.type === 'image') {
       // For images, show for 8 seconds then advance
       timerRef.current = setTimeout(() => {
         advanceToNextItem();
       }, 8000);
-    } else if (currentItem.type === 'video') {
+    } else if (currentSplash.type === 'video') {
       // For videos, play for their full duration then advance
       const videoElement = videoRef.current;
       if (videoElement) {
-        // Reset video to beginning
         videoElement.currentTime = 0;
-        
-        // Set up event to advance when video ends
-        videoElement.onended = () => {
-          advanceToNextItem();
-        };
-        
-        // Make sure video starts playing
+        // Only loop if there is only one splash screen
+        if (splashScreens.length === 1) {
+          videoElement.loop = true;
+          videoElement.onended = null; // No advance for single video
+        } else {
+          videoElement.loop = false;
+          videoElement.onended = () => {
+            advanceToNextItem();
+          };
+        }
         videoElement.play().catch(error => {
           console.error('Error playing video:', error);
-          // Fallback to timeout if video fails to play
           timerRef.current = setTimeout(() => {
             advanceToNextItem();
           }, 8000);
         });
       }
     }
-    
-    // Cleanup function
+
     return () => {
       if (timerRef.current) {
         clearTimeout(timerRef.current);
       }
       if (videoRef.current) {
-        videoRef.current.onended = null;
         videoRef.current.pause();
       }
     };
-  }, [currentIndex]);
-  
-  // Handle user touch/click to exit splash screen
+  }, [currentSplash, splashScreens.length]);
+
+  const advanceToNextItem = () => {
+    if (splashScreens.length === 0) return;
+    
+    const nextIndex = (currentIndex + 1) % splashScreens.length;
+    setCurrentIndex(nextIndex);
+    setCurrentSplash(splashScreens[nextIndex]);
+  };
+
   const handleUserInteraction = (event: React.MouseEvent | React.TouchEvent) => {
-    // Aggressively prevent event propagation
     event.preventDefault();
     event.stopPropagation();
-    
-    // Also use the native DOM method which is stronger
     event.nativeEvent.stopImmediatePropagation();
     
-    // Clear any timers
     if (timerRef.current) {
       clearTimeout(timerRef.current);
     }
     
-    // Stop video if playing
     if (videoRef.current) {
       videoRef.current.onended = null;
       videoRef.current.pause();
     }
     
-    // Call the transition function
     onComplete();
   };
-  
+
+  if (isLoading) {
+    console.log('[SplashScreen] Loading state - showing loading screen');
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
+        <div className="text-white text-2xl">Cargando...</div>
+      </div>
+    );
+  }
+
+  if (!currentSplash) {
+    console.log('[SplashScreen] No current splash - showing no splash screen message');
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
+        <div className="text-white text-2xl">No hay splash screens disponibles</div>
+      </div>
+    );
+  }
+
+  console.log('[SplashScreen] Rendering splash screen:', currentSplash);
+
   return (
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center cursor-pointer splash-screen-container"
@@ -152,7 +210,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
       {currentSplash.type === 'image' ? (
         <img 
           src={currentSplash.src} 
-          alt="Welcome to Vape Vending" 
+          alt={currentSplash.name} 
           className="w-full h-full object-cover"
           draggable={false}
         />
@@ -167,9 +225,8 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
         />
       )}
       
-      {/* Optional: Add a hint for users to touch the screen */}
       <div className="absolute bottom-10 left-0 right-0 text-center">
-        <p className="text-white text-2xl font-bold drop-shadow-lg animate-pulse">
+        <p className="text-black text-2xl font-bold drop-shadow-lg animate-pulse bg-white/50 rounded-md px-4 py-2 inline-block">
           Toca la pantalla para continuar
         </p>
       </div>

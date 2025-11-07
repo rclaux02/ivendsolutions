@@ -17,6 +17,7 @@ interface FilterModalProps {
   onApplyFilters: (selectedFilters: Record<string, string[]>) => void;
   initialFilters?: Record<string, string[]>;
   filterCategories?: FilterCategory[];
+  machineCode?: string; // Código de la máquina actual
 }
 
 const FilterModal: React.FC<FilterModalProps> = ({ 
@@ -24,61 +25,86 @@ const FilterModal: React.FC<FilterModalProps> = ({
   onClose, 
   onApplyFilters, 
   initialFilters = {
-    Marcas: [],
-    Puffs: [],
+    Categoria: [],
+    Marca: [],
     Precio: [],
   },
-  filterCategories: externalFilterCategories
+  filterCategories: externalFilterCategories,
+  machineCode = '000003' // Default machine code
 }) => {
-  // Default filter categories if not provided externally
+  // Default filter categories - all empty, will be populated from database
   const defaultFilterCategories: FilterCategory[] = [
     {
-      name: 'Marcas',
+      name: 'Categoria',
       options: [
-        { id: 'Elfbar', label: 'Elfbar' },
-        { id: 'Life Pod', label: 'Life Pod' },
-        { id: 'VaporTech', label: 'VaporTech' },
-        { id: 'FrostVape', label: 'FrostVape' },
-        { id: 'CloudKing', label: 'CloudKing' },
-        { id: 'TropicalVape', label: 'TropicalVape' },
-      ],
+        { id: 'Bebidas', label: 'Bebidas' },
+        { id: 'Caramelos', label: 'Caramelos' },
+        { id: 'Chocolates', label: 'Chocolates' },
+        { id: 'Cigarros', label: 'Cigarros' },
+        { id: 'Galletas', label: 'Galletas' },
+        { id: 'Snacks', label: 'Snacks' },
+      ]
     },
     {
-      name: 'Puffs',
-      options: [
-        { id: '40000+', label: '40,000+' },
-        { id: '30000-40000', label: '30,000 - 40,000' },
-        { id: '20000-30000', label: '20,000 - 30,000' },
-        { id: '10000-20000', label: '10,000 - 20,000' },
-        { id: '1000-10000', label: '1,000 - 10,000' },
-      ],
+      name: 'Marca',
+      options: [] // Will be populated from database
     },
     {
       name: 'Precio',
       options: [
-        { id: '150+', label: '150+ soles' },
-        { id: '100-150', label: '100 - 150 soles' },
-        { id: '50-100', label: '50 - 100 soles' },
-        { id: '0-50', label: '0 - 50 soles' },
+        { id: '0-2', label: '0 - 2 soles' },
+        { id: '2-5', label: '2 - 5 soles' },
+        { id: '5-10', label: '5 - 10 soles' },
+        { id: '10+', label: '10+ soles' },
       ],
     },
   ];
 
-  // Use provided filter categories or fall back to default
-  const filterCategories = externalFilterCategories || defaultFilterCategories;
-
   // State for selected filters
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>(initialFilters);
 
+  // Use provided filter categories (which includes dynamic brands and categories) or fall back to default
+  let filterCategories = externalFilterCategories || defaultFilterCategories;
+  
+  // Debug log to see what we're receiving
+  console.log('[FilterModal] Received externalFilterCategories:', externalFilterCategories);
+  console.log('[FilterModal] Using filterCategories:', filterCategories);
+  
   // State for modal animation
   const [modalVisible, setModalVisible] = useState(false);
 
-  // Update selected filters when initialFilters changes
-  useEffect(() => {
-    if (isOpen) {
-      setSelectedFilters(initialFilters);
-    }
-  }, [isOpen, initialFilters]);
+  // Remove this useEffect that tries to load categories from DB
+  // useEffect(() => {
+  //   if (isOpen && machineCode) {
+  //     loadCategoriesForMachine(machineCode);
+  //   }
+  // }, [isOpen, machineCode]);
+
+  // Remove the loadCategoriesForMachine function entirely
+  // const loadCategoriesForMachine = async (machineCode: string) => {
+  //   try {
+  //     console.log('Cargando categorías para máquina:', machineCode);
+  //     const categories = await window.electronAPI.invoke('filters:get-categories-by-machine', machineCode);
+  //     setDbCategories(categories);
+  //   } catch (error) {
+  //     console.error('Error cargando categorías para máquina', machineCode, ':', error);
+  //   }
+  // };
+
+  // Remove this logic that overwrites categories
+  // // SIEMPRE usar las categorías de la BD para la máquina específica
+  // if (dbCategories.length > 0) {
+  //   filterCategories = [
+  //     {
+  //       name: 'Categoria',
+  //       options: dbCategories.map(cat => ({ id: cat, label: cat }))
+  //     },
+  //     ...defaultFilterCategories.slice(1) // Mantener Marca y Precio
+  //   ];
+  //   console.log('✅ Usando categorías de BD para máquina', machineCode, ':', dbCategories);
+  // } else {
+  //   console.log('⚠️ No hay categorías de BD, usando categorías por defecto');
+  // }
 
   // Handle modal open/close with animation
   useEffect(() => {
@@ -145,7 +171,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
           onClick={e => e.stopPropagation()}
         >
           <div className="flex justify-between items-start mb-[70px]">
-            <h2 className="text-black text-[32px] font-[800] font-akira">FILTROS</h2>
+            <h2 className="text-black text-[32px] font-[800] font-akira">Filtros</h2>
             <button 
               onClick={clearFilters}
               className="text-black text-[18px] font-[600] font-inter hover:text-gray-600"

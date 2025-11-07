@@ -346,7 +346,17 @@ export class IzipayPOSService extends EventEmitter {
           username: this.config.credentials.username
         }
       });
-      throw error;
+      
+      // Provide specific error messages for common issues
+      if (error.message && error.message.includes('ECONNREFUSED')) {
+        throw new Error('Failed to connect to Izipay API - service may not be running on localhost:9090');
+      } else if (error.message && error.message.includes('ETIMEDOUT')) {
+        throw new Error('Izipay API connection timeout - check network connectivity');
+      } else if (error.message && error.message.includes('Authentication failed')) {
+        throw new Error('Izipay API authentication failed - check credentials or service status');
+      } else {
+        throw new Error(`Izipay API error: ${error.message || 'Unknown error'}`);
+      }
     }
   }
 

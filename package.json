@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "./dist/main/main.js",
   "scripts": {
-    "start": "npm run build && cross-env NODE_ENV=production electron .",
+    "start": "npm run build && node start-with-ngrok.js",
+    "start:with-webhook": "npm run build && cross-env NODE_ENV=production electron . --enable-webhook",
     "start:quiet": "npm run build && cross-env NODE_ENV=production ELECTRON_ENABLE_LOGGING=0 electron .",
     "dev": "vite",
     "dev:quiet": "cross-env VITE_SILENT=true vite",
@@ -16,6 +17,12 @@
     "test:rappi-inventory": "npx ts-node scripts/test-rappi-inventory-simple.ts",
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder",
+    "install:ngrok": "node scripts/install-ngrok.js",
+    "setup:ngrok": "powershell -ExecutionPolicy Bypass -File scripts/setup-ngrok.ps1",
+    "test:webhook": "powershell -ExecutionPolicy Bypass -File scripts/test-webhook.ps1",
+    "test:ngrok": "powershell -ExecutionPolicy Bypass -File scripts/test-ngrok.ps1",
+    "debug:webhook": "powershell -ExecutionPolicy Bypass -File scripts/debug-webhook.ps1",
+    "setup:complete": "powershell -ExecutionPolicy Bypass -File scripts/install-and-test.ps1",
     "postinstall": "electron-builder install-app-deps"
   },
   "keywords": [],
@@ -58,11 +65,12 @@
     "axios": "^1.6.5",
     "basic-ftp": "^5.0.3",
     "canvas": "^3.1.0",
-    "dotenv": "^16.5.0",
+    "dotenv": "^16.6.1",
     "electron-store": "^8.1.0",
     "express": "^4.21.2",
     "lucide-react": "^0.475.0",
     "mysql2": "^3.6.1",
+    "ngrok": "^5.0.0-beta.1",
     "node-webcam": "^0.8.2",
     "react": "^18.2.0",
     "react-circular-progressbar": "^2.1.0",
@@ -116,6 +124,13 @@
       {
         "from": "public/scripts/RegulaScripts",
         "to": "scripts/RegulaScripts",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "node_modules/ngrok/bin",
+        "to": "ngrok",
         "filter": [
           "**/*"
         ]
